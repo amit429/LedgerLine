@@ -11,6 +11,9 @@ import {
 export interface CsvParseResult<T> {
   rows: T[];
   errors: string[];
+  /** Column headers actually found, for building a "missing columns" diff. */
+  columnsFound: string[];
+  columnsMissing: string[];
 }
 
 /**
@@ -36,7 +39,12 @@ function parseRows<T>(
   const missingColumns = columns.filter((c) => !headerFields.includes(c));
   if (missingColumns.length > 0) {
     errors.push(`Missing required columns: ${missingColumns.join(", ")}`);
-    return { rows: [], errors };
+    return {
+      rows: [],
+      errors,
+      columnsFound: headerFields,
+      columnsMissing: missingColumns,
+    };
   }
 
   const rows: T[] = [];
@@ -50,7 +58,7 @@ function parseRows<T>(
     }
   });
 
-  return { rows, errors };
+  return { rows, errors, columnsFound: headerFields, columnsMissing: [] };
 }
 
 export function parseOrdersCsv(csvText: string): CsvParseResult<RawOrderRow> {
