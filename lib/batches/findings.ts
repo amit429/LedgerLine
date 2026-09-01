@@ -29,9 +29,20 @@ export function computeFindings(
   ];
 
   if (duplicateOrderKeys.size > 0) {
-    const removedValueCents = normalizedOrders
-      .filter((o) => duplicateOrderKeys.has(o.orderKey))
-      .reduce((sum, o) => sum + o.netCents, 0);
+    // One representative row's value per duplicated key, not the sum of
+    // every matching row — the latter would include both the kept copy
+    // and the removed one(s), double-counting the exact amount this
+    // finding claims to prevent.
+    const valueByKey = new Map<string, number>();
+    for (const order of normalizedOrders) {
+      if (duplicateOrderKeys.has(order.orderKey) && !valueByKey.has(order.orderKey)) {
+        valueByKey.set(order.orderKey, order.netCents);
+      }
+    }
+    const removedValueCents = Array.from(valueByKey.values()).reduce(
+      (sum, cents) => sum + cents,
+      0
+    );
     findings.push({
       title:
         duplicateOrderKeys.size === 1
