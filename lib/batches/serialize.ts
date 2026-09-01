@@ -1,4 +1,8 @@
-import type { NormalizedOrder, NormalizedPayment } from "../reconciliation/types";
+import type {
+  Discrepancy,
+  NormalizedOrder,
+  NormalizedPayment,
+} from "../reconciliation/types";
 
 /**
  * DB row shapes for insert. `raw` carries the untouched parsed CSV row as
@@ -77,5 +81,41 @@ export function paymentToInsertRow(
     type: payment.type,
     status: payment.status,
     raw: payment.raw,
+  };
+}
+
+export interface DiscrepancyInsertRow {
+  run_id: string;
+  user_id: string;
+  type: Discrepancy["type"];
+  severity: Discrepancy["severity"];
+  order_key: string;
+  order_id: string | null;
+  transaction_refs: string[];
+  expected_cents: number | null;
+  actual_cents: number | null;
+  impact_cents: number;
+  currency: string | null;
+  details: Discrepancy["details"];
+}
+
+export function discrepancyToInsertRow(
+  discrepancy: Discrepancy,
+  runId: string,
+  userId: string
+): DiscrepancyInsertRow {
+  return {
+    run_id: runId,
+    user_id: userId,
+    type: discrepancy.type,
+    severity: discrepancy.severity,
+    order_key: discrepancy.orderKey,
+    order_id: discrepancy.orderId,
+    transaction_refs: discrepancy.transactionRefs,
+    expected_cents: discrepancy.expectedCents,
+    actual_cents: discrepancy.actualCents,
+    impact_cents: discrepancy.impactCents,
+    currency: discrepancy.currency,
+    details: discrepancy.details,
   };
 }
