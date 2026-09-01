@@ -2,6 +2,7 @@ import Link from "next/link";
 import { DiscrepancyPreviewTable } from "@/components/dashboard/discrepancy-preview-table";
 import { HeadlineTiles } from "@/components/dashboard/headline-tiles";
 import { ImpactByTypeChart } from "@/components/dashboard/impact-by-type-chart";
+import { LlmBriefingCard } from "@/components/dashboard/llm-briefing-card";
 import { SeverityDonut } from "@/components/dashboard/severity-donut";
 import type { Discrepancy, ReconSummary } from "@/lib/reconciliation/types";
 import { createClient } from "@/lib/supabase/server";
@@ -98,6 +99,7 @@ export default async function DashboardPage() {
             <SeverityDonut summary={summary} />
           </div>
         </div>
+        <LlmBriefingCard runId={run.id} />
         <DiscrepancyPreviewTable
           rows={topDiscrepancies}
           totalCount={allDiscrepancies?.length ?? 0}
