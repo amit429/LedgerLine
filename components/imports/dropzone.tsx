@@ -18,6 +18,7 @@ export function Dropzone({ label, columnsHint, file, onFileSelected }: DropzoneP
     <div
       role="button"
       tabIndex={0}
+      aria-label={`${label}: ${file ? `${file.name} selected` : "drop a CSV here or browse"}`}
       onClick={() => inputRef.current?.click()}
       onKeyDown={(e) => e.key === "Enter" && inputRef.current?.click()}
       onDragOver={(e) => {

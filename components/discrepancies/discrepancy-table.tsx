@@ -40,7 +40,8 @@ export function DiscrepancyTable({
   const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.id));
 
   return (
-    <table className="w-full text-[13px]">
+    <div className="overflow-x-auto">
+    <table className="w-full min-w-[900px] text-[13px]">
       <thead>
         <tr className="text-left text-[12px] text-muted-foreground">
           <th className="w-9 px-5 py-2.5">
@@ -48,6 +49,7 @@ export function DiscrepancyTable({
               type="checkbox"
               checked={allSelected}
               onChange={onToggleSelectAll}
+              aria-label="Select all discrepancies on this page"
               className="h-3.5 w-3.5 rounded border-border"
             />
           </th>
@@ -73,6 +75,7 @@ export function DiscrepancyTable({
                 type="checkbox"
                 checked={selected.has(row.id)}
                 onChange={() => onToggleSelect(row.id)}
+                aria-label={`Select discrepancy for order ${row.order_id ?? row.order_key}`}
                 className="h-3.5 w-3.5 rounded border-border"
               />
             </td>
@@ -102,5 +105,6 @@ export function DiscrepancyTable({
         ))}
       </tbody>
     </table>
+    </div>
   );
 }
