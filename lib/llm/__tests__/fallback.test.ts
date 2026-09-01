@@ -1,22 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { fallbackExplanation } from "../fallback";
 import { ExplanationSchema } from "../schema";
-import type { DiscrepancyType } from "../../reconciliation/types";
+import {
+  INFORMATIONAL_TYPES,
+  MONEY_AFFECTING_TYPES,
+  type DiscrepancyType,
+} from "../../reconciliation/types";
 
-const ALL_TYPES: DiscrepancyType[] = [
-  "MISSING_PAYMENT",
-  "ORPHAN_PAYMENT",
-  "DUPLICATE_CHARGE",
-  "CANCELLED_BUT_CHARGED",
-  "CURRENCY_MISMATCH",
-  "AMOUNT_MISMATCH",
-  "UNSETTLED_PAYMENT",
-  "PARTIAL_REFUND_GAP",
-  "REFUND_STATUS_MISMATCH",
-  "LATE_SETTLEMENT",
-  "DATA_QUALITY",
-  "DUPLICATE_ORDER_ROW",
-];
+// Derived, not hand-maintained — see engine.ts's ALL_TYPES for why: a
+// hardcoded list here is exactly the kind of place a new discrepancy type
+// could silently go untested.
+const ALL_TYPES: DiscrepancyType[] = [...MONEY_AFFECTING_TYPES, ...INFORMATIONAL_TYPES];
 
 describe("fallbackExplanation", () => {
   it("produces schema-valid output for every discrepancy type with no network call", () => {

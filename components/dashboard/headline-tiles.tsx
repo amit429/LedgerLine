@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { InfoTooltip } from "@/components/shared/info-tooltip";
-import type { ReconSummary } from "@/lib/reconciliation/types";
+import { MONEY_AFFECTING_TYPES, type ReconSummary } from "@/lib/reconciliation/types";
 
 function formatDollars(cents: number): string {
   return (cents / 100).toLocaleString("en-US", {
@@ -48,16 +48,12 @@ export function HeadlineTiles({ summary }: { summary: ReconSummary }) {
     summary.totalOrderValueCents > 0
       ? (summary.valueInDisputeCents / summary.totalOrderValueCents) * 100
       : 0;
-  const moneyAffectingCount =
-    summary.byType.MISSING_PAYMENT.count +
-    summary.byType.ORPHAN_PAYMENT.count +
-    summary.byType.DUPLICATE_CHARGE.count +
-    summary.byType.CANCELLED_BUT_CHARGED.count +
-    summary.byType.CURRENCY_MISMATCH.count +
-    summary.byType.AMOUNT_MISMATCH.count +
-    summary.byType.UNSETTLED_PAYMENT.count +
-    summary.byType.PARTIAL_REFUND_GAP.count +
-    summary.byType.REFUND_STATUS_MISMATCH.count;
+  // Derived from MONEY_AFFECTING_TYPES rather than a hand-listed set of
+  // fields, so a future rule addition can't go silently uncounted here.
+  const moneyAffectingCount = MONEY_AFFECTING_TYPES.reduce(
+    (sum, type) => sum + summary.byType[type].count,
+    0
+  );
 
   // Older persisted runs predate a field added to the summary shape —
   // RECON_PLAN's own design keeps historical runs immutable (Phase 9), so

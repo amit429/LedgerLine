@@ -3,8 +3,8 @@ import { getActiveBatchId } from "@/lib/batches/active-batch";
 import type { DiscrepancyType, Severity } from "@/lib/reconciliation/types";
 import { createClient } from "@/lib/supabase/server";
 
-const DEFAULT_PAGE_SIZE = 20;
-const ALLOWED_PAGE_SIZES = new Set([10, 20, 25, 50, 100]);
+const DEFAULT_PAGE_SIZE = 25;
+const ALLOWED_PAGE_SIZES = new Set([10, 25, 50, 100]);
 
 export async function GET(request: Request) {
   const supabase = await createClient();

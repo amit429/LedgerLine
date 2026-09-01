@@ -1,26 +1,11 @@
+import { SEVERITY_BY_TYPE } from "./rule-descriptions";
 import type {
   Discrepancy,
   DiscrepancyType,
   NormalizedPayment,
   OrderGroup,
   ReconConfig,
-  Severity,
 } from "./types";
-
-const SEVERITY_BY_TYPE: Record<DiscrepancyType, Severity> = {
-  MISSING_PAYMENT: "critical",
-  ORPHAN_PAYMENT: "critical",
-  DUPLICATE_CHARGE: "critical",
-  CANCELLED_BUT_CHARGED: "critical",
-  CURRENCY_MISMATCH: "critical",
-  AMOUNT_MISMATCH: "high",
-  UNSETTLED_PAYMENT: "high",
-  PARTIAL_REFUND_GAP: "high",
-  REFUND_STATUS_MISMATCH: "medium",
-  LATE_SETTLEMENT: "low",
-  DATA_QUALITY: "low",
-  DUPLICATE_ORDER_ROW: "low",
-};
 
 function makeDiscrepancy(
   type: DiscrepancyType,

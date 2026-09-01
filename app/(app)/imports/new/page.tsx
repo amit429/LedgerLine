@@ -88,6 +88,7 @@ export default function NewImportPage() {
     }
 
     router.push("/dashboard");
+    router.refresh();
   }
 
   async function handleContinue() {

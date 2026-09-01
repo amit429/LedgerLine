@@ -13,22 +13,11 @@ import type {
   ReconResult,
   ReconSummary,
 } from "./types";
-import { MONEY_AFFECTING_TYPES } from "./types";
+import { INFORMATIONAL_TYPES, MONEY_AFFECTING_TYPES } from "./types";
 
-const ALL_TYPES: DiscrepancyType[] = [
-  "MISSING_PAYMENT",
-  "ORPHAN_PAYMENT",
-  "DUPLICATE_CHARGE",
-  "CANCELLED_BUT_CHARGED",
-  "CURRENCY_MISMATCH",
-  "AMOUNT_MISMATCH",
-  "UNSETTLED_PAYMENT",
-  "PARTIAL_REFUND_GAP",
-  "REFUND_STATUS_MISMATCH",
-  "LATE_SETTLEMENT",
-  "DATA_QUALITY",
-  "DUPLICATE_ORDER_ROW",
-];
+// Derived, not hand-maintained — types.ts's two lists are the single
+// source of truth for which discrepancy types exist at all.
+const ALL_TYPES: DiscrepancyType[] = [...MONEY_AFFECTING_TYPES, ...INFORMATIONAL_TYPES];
 const MONEY_AFFECTING_SET = new Set<DiscrepancyType>(MONEY_AFFECTING_TYPES);
 
 /**

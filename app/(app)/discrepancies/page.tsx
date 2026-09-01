@@ -104,7 +104,7 @@ export default function DiscrepanciesPage() {
   const debouncedQ = useDebouncedValue(q, 300);
   const [sort, setSort] = useState(() => searchParams.get("sort") ?? "impact_desc");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(25);
   const [data, setData] = useState<DiscrepanciesResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
