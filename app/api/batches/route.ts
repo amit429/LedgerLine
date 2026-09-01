@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { computeFindings } from "@/lib/batches/findings";
+import { computeRunHistoryRows } from "@/lib/batches/run-history";
 import { orderToInsertRow, paymentToInsertRow } from "@/lib/batches/serialize";
 import { parseOrdersCsv, parsePaymentsCsv } from "@/lib/csv/parse";
 import { dedupeOrders } from "@/lib/reconciliation/group";
 import { normalizeOrder, normalizePayment } from "@/lib/reconciliation/normalize";
 import { createClient } from "@/lib/supabase/server";
+
+export type { RunHistoryRow } from "@/lib/batches/run-history";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -137,4 +140,44 @@ export async function POST(request: Request) {
     },
     { status: 201 }
   );
+}
+
+/**
+ * Run history across all of the user's batches — each row keeps the
+ * tolerances it ran with (RECON_PLAN's reproducibility guarantee), so
+ * "current" vs "superseded" vs "archived" is derived here rather than
+ * mutating past runs.
+ */
+export async function GET() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const [{ data: batches, error: batchesError }, { data: runs, error: runsError }] =
+    await Promise.all([
+      supabase
+        .from("import_batches")
+        .select("id, label, orders_row_count, payments_row_count")
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("reconciliation_runs")
+        .select("id, batch_id, summary, engine_version, config, created_at")
+        .order("created_at", { ascending: false }),
+    ]);
+
+  if (batchesError || runsError) {
+    return NextResponse.json(
+      { error: batchesError?.message ?? runsError?.message },
+      { status: 500 }
+    );
+  }
+
+  const rows = computeRunHistoryRows(batches ?? [], runs ?? []);
+
+  return NextResponse.json({ rows });
 }
