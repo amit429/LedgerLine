@@ -61,6 +61,32 @@ export function reconcile(
   return { discrepancies, orders, payments: normalizedPayments, summary };
 }
 
+/**
+ * Exported separately (not just used internally) because a duplicate row
+ * can only ever be detected once, at ingest time — the DB's unique
+ * constraint means the removed copy is never persisted, so reconcile() re-
+ * running against stored rows can't rediscover it on its own. The API
+ * route that persists ingest-time findings reuses this same builder to
+ * inject the discrepancy reconcile() itself can no longer produce.
+ */
+export function buildDuplicateOrderRowDiscrepancy(
+  orderKey: string,
+  orderId: string | null
+): Discrepancy {
+  return {
+    type: "DUPLICATE_ORDER_ROW",
+    severity: "low",
+    orderKey,
+    orderId,
+    transactionRefs: [],
+    expectedCents: null,
+    actualCents: null,
+    impactCents: 0,
+    currency: null,
+    details: {},
+  };
+}
+
 function duplicateOrderRowDiscrepancies(
   duplicateOrderKeys: Set<string>,
   groups: Map<string, OrderGroup>
@@ -68,18 +94,7 @@ function duplicateOrderRowDiscrepancies(
   const result: Discrepancy[] = [];
   for (const key of duplicateOrderKeys) {
     const group = groups.get(key);
-    result.push({
-      type: "DUPLICATE_ORDER_ROW",
-      severity: "low",
-      orderKey: key,
-      orderId: group?.order?.orderId ?? null,
-      transactionRefs: [],
-      expectedCents: null,
-      actualCents: null,
-      impactCents: 0,
-      currency: null,
-      details: {},
-    });
+    result.push(buildDuplicateOrderRowDiscrepancy(key, group?.order?.orderId ?? null));
   }
   return result;
 }
@@ -107,7 +122,14 @@ function duplicateOrderRowDiscrepancies(
  *    a late-settlement flag isn't "clean" even though it's not a financial
  *    dispute.
  */
-function computeSummary(
+/**
+ * Exported so callers that inject discrepancies reconcile() couldn't have
+ * produced itself (e.g. the API route re-attaching a DUPLICATE_ORDER_ROW
+ * flag from ingest-time findings) can recompute a summary that accounts
+ * for them — an order gaining even an informational discrepancy after the
+ * fact should no longer count as "clean" in valueReconciledCents.
+ */
+export function computeSummary(
   orders: NormalizedOrder[],
   payments: NormalizedPayment[],
   discrepancies: Discrepancy[]

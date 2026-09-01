@@ -79,6 +79,10 @@ export async function POST(request: Request) {
       orders_row_count: dedupedOrders.length,
       payments_row_count: normalizedPayments.length,
       status: "pending",
+      // The removed duplicate row(s) never reach the `orders` table (its
+      // UNIQUE constraint only ever admits one copy) — persisted here so
+      // /reconcile can still flag DUPLICATE_ORDER_ROW after the fact.
+      duplicate_order_keys: Array.from(duplicateOrderKeys),
     })
     .select("id")
     .single();
