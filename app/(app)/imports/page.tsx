@@ -79,7 +79,11 @@ export default async function ImportsPage() {
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.runId} className="border-t border-border/60">
+                <tr
+                  key={row.runId}
+                  id={row.runId}
+                  className="border-t border-border/60 target:bg-[var(--severity-tint-reconciled)]"
+                >
                   <td className="px-5 py-3">{row.label}</td>
                   <td className="px-3 py-3 text-muted-foreground">
                     {formatDateTime(row.reconciledAt)}

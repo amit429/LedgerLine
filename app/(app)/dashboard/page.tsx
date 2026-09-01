@@ -3,7 +3,9 @@ import { DiscrepancyPreviewTable } from "@/components/dashboard/discrepancy-prev
 import { HeadlineTiles } from "@/components/dashboard/headline-tiles";
 import { ImpactByTypeChart } from "@/components/dashboard/impact-by-type-chart";
 import { LlmBriefingCard } from "@/components/dashboard/llm-briefing-card";
+import { MoneyAtRiskTrendChart } from "@/components/dashboard/money-at-risk-trend-chart";
 import { SeverityDonut } from "@/components/dashboard/severity-donut";
+import { computeRunHistoryRows } from "@/lib/batches/run-history";
 import type { Discrepancy, ReconSummary } from "@/lib/reconciliation/types";
 import { createClient } from "@/lib/supabase/server";
 
@@ -39,21 +41,31 @@ function formatRelativeTime(iso: string): string {
 export default async function DashboardPage() {
   const supabase = await createClient();
 
-  // The latest *run*, not the latest batch — an uploaded-but-never-
-  // reconciled batch (abandoned mid-wizard, or just not run yet) must not
-  // shadow an older batch that was actually reconciled.
-  const { data: run } = await supabase
-    .from("reconciliation_runs")
-    .select("id, batch_id, summary, created_at")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  // All runs, newest first, doubles as both "the latest run" (an
+  // uploaded-but-never-reconciled batch must not shadow an older batch
+  // that was actually reconciled, so this can't just be the latest batch)
+  // and the source for the trend chart below — one query instead of two.
+  const [{ data: batches }, { data: allRuns }] = await Promise.all([
+    supabase.from("import_batches").select("id, label, orders_row_count, payments_row_count"),
+    supabase
+      .from("reconciliation_runs")
+      .select("id, batch_id, summary, engine_version, config, created_at")
+      .order("created_at", { ascending: false }),
+  ]);
 
+  const run = allRuns?.[0] ?? null;
   if (!run) {
     return <EmptyState />;
   }
 
   const summary = run.summary as ReconSummary;
+
+  // One point per *import*, not per Settings re-run of the same import
+  // with different tolerances — see MoneyAtRiskTrendChart's own comment
+  // for why that distinction matters for a trend line specifically.
+  const runHistory = computeRunHistoryRows(batches ?? [], allRuns ?? [])
+    .filter((r) => r.status !== "superseded")
+    .sort((a, b) => new Date(a.reconciledAt).getTime() - new Date(b.reconciledAt).getTime());
 
   const { data: allDiscrepancies } = await supabase
     .from("discrepancies")
@@ -95,8 +107,9 @@ export default async function DashboardPage() {
         <HeadlineTiles summary={summary} />
         <div className="flex flex-wrap gap-4">
           <ImpactByTypeChart summary={summary} />
-          <div className="min-w-[320px] flex-1">
+          <div className="flex min-w-[320px] flex-1 flex-col gap-4">
             <SeverityDonut summary={summary} />
+            <MoneyAtRiskTrendChart runs={runHistory} />
           </div>
         </div>
         <LlmBriefingCard runId={run.id} />

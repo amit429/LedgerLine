@@ -1,6 +1,7 @@
 "use client";
 
 import { Search } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DetailDrawer } from "@/components/discrepancies/detail-drawer";
 import { DiscrepancyTable } from "@/components/discrepancies/discrepancy-table";
@@ -85,11 +86,23 @@ function toCsv(rows: DiscrepancyRow[]): string {
 }
 
 export default function DiscrepanciesPage() {
-  const [severity, setSeverity] = useState<string[]>([]);
-  const [type, setType] = useState<string[]>([]);
-  const [q, setQ] = useState("");
+  // Seeded once from the URL on first render — this is what makes the
+  // dashboard's chart clicks and headline-tile links (e.g.
+  // /discrepancies?severity=critical,high) actually land on a filtered
+  // view instead of silently opening the unfiltered table. Filters aren't
+  // synced back to the URL as the user changes them (that's a separate,
+  // bigger feature — bookmarkable/shareable filter state); this only
+  // covers arriving with filters already applied.
+  const searchParams = useSearchParams();
+  const [severity, setSeverity] = useState<string[]>(
+    () => searchParams.get("severity")?.split(",").filter(Boolean) ?? []
+  );
+  const [type, setType] = useState<string[]>(
+    () => searchParams.get("type")?.split(",").filter(Boolean) ?? []
+  );
+  const [q, setQ] = useState(() => searchParams.get("q") ?? "");
   const debouncedQ = useDebouncedValue(q, 300);
-  const [sort, setSort] = useState("impact_desc");
+  const [sort, setSort] = useState(() => searchParams.get("sort") ?? "impact_desc");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [data, setData] = useState<DiscrepanciesResponse | null>(null);

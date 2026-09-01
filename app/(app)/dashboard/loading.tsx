@@ -11,7 +11,10 @@ export default function DashboardLoading() {
       </div>
       <div className="flex gap-4">
         <Pulse className="h-64 flex-[0_0_460px]" />
-        <Pulse className="h-64 flex-1" />
+        <div className="flex flex-1 flex-col gap-4">
+          <Pulse className="h-64 w-full" />
+          <Pulse className="h-48 w-full" />
+        </div>
       </div>
       <Pulse className="h-72 w-full" />
     </div>
