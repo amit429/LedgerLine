@@ -5,12 +5,108 @@ processor's settlement export, classifies every disagreement between them,
 and explains the results in plain language on top of a deterministic
 matching engine.
 
-**Live app:** https://ledger-line-one.vercel.app
+<p>
+  <a href="https://ledger-line-one.vercel.app"><img alt="Live Demo" src="https://img.shields.io/badge/Live_Demo-ledger--line--one.vercel.app-1C7A5E?style=for-the-badge&logo=vercel&logoColor=white"></a>
+  <img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-000000?style=for-the-badge&logo=nextdotjs&logoColor=white">
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white">
+  <img alt="Supabase" src="https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white">
+</p>
 
-**Account creation:** The sign-up flow works end to end (create an account,
-you're immediately signed in)
+**Account creation:** the sign-up flow works end to end — create an
+account, you're immediately signed in. Sample datasets for a fresh test
+import are in the [`fixtures/`](./fixtures) folder.
 
-**Sample Datasets can be found in fixtures folder for test reconciliation**
+<p align="center">
+  <img src="./docs/dashboard.png" alt="Ledgerline reconciliation dashboard — headline tiles, value-at-risk chart, severity breakdown, and a money-at-risk trend line" width="100%">
+</p>
+
+<details>
+<summary><strong>See the discrepancies drill-down view →</strong></summary>
+<br>
+<img src="./docs/discrepancies.png" alt="Ledgerline discrepancies table — filterable, searchable, sorted by impact" width="100%">
+</details>
+
+---
+
+## Contents
+
+- [Tech stack](#tech-stack)
+- [Quickstart (local)](#quickstart-local)
+- [Architecture](#architecture)
+- [Reconciliation logic](#reconciliation-logic)
+- [What we found in the data](#what-we-found-in-the-data)
+- [LLM approach](#llm-approach)
+- [Robustness](#robustness)
+- [What's next](#whats-next)
+- [AI tool usage](#ai-tool-usage)
+
+---
+
+## Tech stack
+
+<table>
+<tr><th align="left">&nbsp;</th><th align="left">Layer</th><th align="left">Choice</th><th align="left">Why this one</th></tr>
+<tr>
+<td><img src="https://img.shields.io/badge/-000000?style=flat-square&logo=nextdotjs&logoColor=white" alt=""></td>
+<td>Framework</td>
+<td><strong>Next.js 16</strong> (App Router)</td>
+<td>Route Handlers double as the backend — no second deploy target, no CORS, no cookie-domain problem. See <a href="./AGENTS.md">AGENTS.md</a> for the breaking-change notes this version required.</td>
+</tr>
+<tr>
+<td><img src="https://img.shields.io/badge/-3178C6?style=flat-square&logo=typescript&logoColor=white" alt=""></td>
+<td>Language</td>
+<td><strong>TypeScript</strong>, strict mode</td>
+<td>The reconciliation engine's types (<code>Discrepancy</code>, <code>ReconSummary</code>) are the contract every layer above it — API routes, dashboard, LLM prompts — is built against.</td>
+</tr>
+<tr>
+<td><img src="https://img.shields.io/badge/-3ECF8E?style=flat-square&logo=supabase&logoColor=white" alt=""></td>
+<td>Database + Auth</td>
+<td><strong>Supabase</strong> (Postgres + Row Level Security)</td>
+<td>RLS turns "users only see their own data" into a database guarantee instead of an application-code discipline — and no custom password hashing to get wrong.</td>
+</tr>
+<tr>
+<td><img src="https://img.shields.io/badge/-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" alt=""></td>
+<td>Styling</td>
+<td><strong>Tailwind CSS v4</strong></td>
+<td>Design tokens ported directly from the original mockup's CSS custom properties — one source of truth for the severity color system used by both the UI and the charts.</td>
+</tr>
+<tr>
+<td><img src="https://img.shields.io/badge/-4285F4?style=flat-square&logo=googlegemini&logoColor=white" alt=""></td>
+<td>LLM</td>
+<td><strong>Gemini 2.5 Flash</strong></td>
+<td>Explanation only, never matching — see <a href="#llm-approach">LLM approach</a>. Fast/cheap tier is the right call for a restatement task, not a reasoning one.</td>
+</tr>
+<tr>
+<td><img src="https://img.shields.io/badge/-8884D8?style=flat-square&logo=d3dotjs&logoColor=white" alt=""></td>
+<td>Charts</td>
+<td><strong>Recharts</strong></td>
+<td>Click-through and hover tooltips on every chart — a bar or slice isn't just decoration, it's a filter into the drill-down table.</td>
+</tr>
+<tr>
+<td><img src="https://img.shields.io/badge/-3E67B1?style=flat-square&logo=zod&logoColor=white" alt=""></td>
+<td>Validation</td>
+<td><strong>Zod</strong></td>
+<td>One schema for CSV row validation <em>and</em> LLM structured-output enforcement (<code>z.toJSONSchema()</code>) — a bad response is caught the same way a bad upload row is.</td>
+</tr>
+<tr>
+<td><img src="https://img.shields.io/badge/-6E9F18?style=flat-square&logo=vitest&logoColor=white" alt=""></td>
+<td>Testing</td>
+<td><strong>Vitest</strong></td>
+<td>The reconciliation engine is pure functions in, data out — no mocking required to test it against the real fixture CSVs directly.</td>
+</tr>
+<tr>
+<td><img src="https://img.shields.io/badge/-2EAD33?style=flat-square&logo=playwright&logoColor=white" alt=""></td>
+<td>Live verification</td>
+<td><strong>Playwright</strong> (dev-time, not shipped)</td>
+<td>Unit tests weren't what caught the real bugs in this build — driving the actual deployed app with a headless browser was. See <a href="#ai-tool-usage">AI tool usage</a>.</td>
+</tr>
+<tr>
+<td><img src="https://img.shields.io/badge/-000000?style=flat-square&logo=vercel&logoColor=white" alt=""></td>
+<td>Hosting</td>
+<td><strong>Vercel</strong></td>
+<td>One deployment for the whole app, auto-deployed on push.</td>
+</tr>
+</table>
 
 ---
 
@@ -48,29 +144,28 @@ npm test
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  Next.js 15 App Router (Vercel)                          │
-│                                                            │
-│  Client components          Route Handlers (server-only)  │
-│  ──────────────────         ──────────────────────────    │
-│  dashboard, discrepancies    /api/batches           (CSV   │
-│  orders, payments, imports    upload → parse → persist)   │
-│  import wizard                /api/batches/:id/reconcile  │
-│                                /api/discrepancies          │
-│                                /api/orders /api/payments    │
-│                                /api/discrepancies/:id/explain│
-│                                /api/runs/:id/explain-summary│
-│                                                              │
-│  lib/reconciliation/  ← pure engine, zero I/O, zero LLM     │
-│  lib/llm/              ← Gemini client, isolated from above │
-└───────────────────────────┬──────────────────────────────┘
-                             │ session-scoped (RLS-enforced)
-                     ┌───────▼────────┐
-                     │ Supabase        │
-                     │ Postgres + Auth │
-                     │ Row Level Sec.  │
-                     └────────────────┘
+```mermaid
+flowchart TB
+    subgraph App["Next.js App Router — deployed on Vercel"]
+        UI["Client Components<br/>dashboard · discrepancies · orders · payments · import wizard"]
+        API["Route Handlers (server-only)<br/>/api/batches · reconcile · discrepancies · orders · payments · explain"]
+        Engine["lib/reconciliation/<br/>pure engine — zero I/O, zero LLM"]
+        LLM["lib/llm/<br/>Gemini client, isolated from the engine"]
+        UI -- fetch --> API
+        API --> Engine
+        API --> LLM
+    end
+
+    Supa[("Supabase<br/>Postgres + Auth + Row Level Security")]
+    Gem(["Gemini API"])
+
+    API -- "session-scoped, RLS-enforced" --> Supa
+    LLM --> Gem
+
+    style Engine fill:#e7f3ee,stroke:#1c7a5e,color:#0f1419
+    style LLM fill:#eaf0f9,stroke:#3f6bb0,color:#0f1419
+    style Supa fill:#10141c,stroke:#10141c,color:#ffffff
+    style Gem fill:#fbf1e3,stroke:#b26b12,color:#0f1419
 ```
 
 One Next.js app, not a separate frontend/backend repo: Route Handlers *are*
@@ -125,18 +220,18 @@ compared against `net_amount` as if it were a failed charge.
 
 | # | Rule | Condition | Severity | Impact |
 |---|---|---|---|---|
-| 1 | `MISSING_PAYMENT` | order exists, 0 charges | critical | `net_amount` |
-| 2 | `ORPHAN_PAYMENT` | payment key not in orders | critical | `amount` |
-| 3 | `DUPLICATE_CHARGE` | ≥2 settled charges, same key | critical | sum of extras |
-| 4 | `CANCELLED_BUT_CHARGED` | status cancelled + settled charge | critical | `amount` |
-| 5 | `CURRENCY_MISMATCH` | order currency ≠ payment currency | critical | `net_amount` |
-| 6 | `AMOUNT_MISMATCH` | \|charge − net_amount\| > tolerance | high | signed delta |
-| 7 | `UNSETTLED_PAYMENT` | order completed, charge failed/pending | high | `net_amount` |
-| 8 | `PARTIAL_REFUND_GAP` | refunded, charges − refunds > tolerance | high | remainder |
-| 9 | `REFUND_STATUS_MISMATCH` | refund exists, order still completed | medium | refund amount |
-| 10 | `LATE_SETTLEMENT` | charge lag > settlement window | low (informational) | 0 |
-| 11 | `DATA_QUALITY` | null email / discount / processed_at | low (informational) | 0 |
-| 12 | `DUPLICATE_ORDER_ROW` | identical order row uploaded twice | low (informational) | 0 |
+| 1 | `MISSING_PAYMENT` | order exists, 0 charges | 🔴 critical | `net_amount` |
+| 2 | `ORPHAN_PAYMENT` | payment key not in orders | 🔴 critical | `amount` |
+| 3 | `DUPLICATE_CHARGE` | ≥2 settled charges, same key | 🔴 critical | sum of extras |
+| 4 | `CANCELLED_BUT_CHARGED` | status cancelled + settled charge | 🔴 critical | `amount` |
+| 5 | `CURRENCY_MISMATCH` | order currency ≠ payment currency | 🔴 critical | `net_amount` |
+| 6 | `AMOUNT_MISMATCH` | \|charge − net_amount\| > tolerance | 🟠 high | signed delta |
+| 7 | `UNSETTLED_PAYMENT` | order completed, charge failed/pending | 🟠 high | `net_amount` |
+| 8 | `PARTIAL_REFUND_GAP` | refunded, charges − refunds > tolerance | 🟠 high | remainder |
+| 9 | `REFUND_STATUS_MISMATCH` | refund exists, order still completed | 🔵 medium | refund amount |
+| 10 | `LATE_SETTLEMENT` | charge lag > settlement window | ⚪ low (informational) | 0 |
+| 11 | `DATA_QUALITY` | null email / discount / processed_at | ⚪ low (informational) | 0 |
+| 12 | `DUPLICATE_ORDER_ROW` | identical order row uploaded twice | ⚪ low (informational) | 0 |
 
 Everything else is a clean match. **Rule 5 must run before rule 6**: two
 records reading `210.00` in different currencies are numerically equal, so
@@ -189,9 +284,12 @@ get wrong silently:
    (each disputed order counted once, at its full net value); at-risk is
    impact-level (sums the actual dollar delta per discrepancy, which for
    `AMOUNT_MISMATCH` is much smaller than the order's full value — a $25
-   overcharge on a $92 order puts $25 at risk, not $92).
+   overcharge on a $92 order puts $25 at risk, not $92). Every headline
+   tile has a hover tooltip in the app spelling this out, since it's the
+   one distinction people ask about first.
 
-### What we deliberately did **not** flag, and why
+<details>
+<summary><strong>What we deliberately did <em>not</em> flag, and why →</strong></summary>
 
 This dataset has two seeded false-positive traps, and correctly not
 flagging them is arguably a bigger signal than finding the real ones:
@@ -209,6 +307,8 @@ flagging them is arguably a bigger signal than finding the real ones:
 against the real CSVs and asserts zero discrepancies on both traps
 directly — not by inspection, by a failing test if that ever regresses.
 
+</details>
+
 ---
 
 ## What we found in the data
@@ -216,14 +316,12 @@ directly — not by inspection, by a failing test if that ever regresses.
 Verified live against the deployed app on the real dataset (184 unique
 orders after deduping a byte-identical duplicate row, 187 payments):
 
-- **19 true discrepancies** across 9 money-affecting classes, plus 3
-  informational flags (one 29-day-late settlement, two data-quality
-  blanks) and the one duplicate order row.
-- **$2,306.37** of order value sits in dispute — about 5.5% of the
-  $42,094.65 total order value.
-- **$2,079.43** is genuinely at risk (critical + high severity impact
-  only).
-- **164 of 184 orders** matched cleanly with no flags at all.
+| | |
+|---|---|
+| 🧾 **19 true discrepancies** | across 9 money-affecting classes, plus 3 informational flags (one 29-day-late settlement, two data-quality blanks) and the one duplicate order row |
+| 💸 **$2,306.37** | of order value sits in dispute — about 5.5% of the $42,094.65 total order value |
+| ⚠️ **$2,079.43** | is genuinely at risk (critical + high severity impact only) |
+| ✅ **164 of 184 orders** | matched cleanly with no flags at all |
 
 In plain terms: four completed orders (**$392.35**) were never charged at
 all — most likely the checkout session failed after the order row was
@@ -300,17 +398,18 @@ to avoid stilted, templated-sounding phrasing. `topP: 1`, capped
    `llm_generated_at` timestamps in the trailing hour rather than a new
    in-memory bucket, which wouldn't survive across serverless invocations
    anyway. (A real production version of this would use Redis for a
-   proper sliding window — noted under What's next.)
+   proper sliding window — noted under [What's next](#whats-next).)
 
- Both the dashboard's portfolio briefing and the per-discrepancy
-drawer degrade to the deterministic template with a clear "generated from
-a template" disclaimer, no crash, no broken UI, and the deterministic
-numbers on the rest of the page are visibly unaffected either way.
-`lib/llm/__tests__/client.test.ts` covers the same retry-then-fallback
-contract without needing network access, asserting exactly one retry
-(not an unbounded loop) before it throws — including the Gemini-specific
-case of a response that's valid JSON but fails Zod validation, which is
-exactly the gap the provider's own schema support doesn't cover.
+> [!NOTE]
+> Both the dashboard's portfolio briefing and the per-discrepancy drawer
+> degrade to the deterministic template with a clear "generated from a
+> template" disclaimer, no crash, no broken UI, and the deterministic
+> numbers on the rest of the page are visibly unaffected either way.
+> `lib/llm/__tests__/client.test.ts` covers the same retry-then-fallback
+> contract without needing network access, asserting exactly one retry
+> (not an unbounded loop) before it throws — including the Gemini-specific
+> case of a response that's valid JSON but fails Zod validation, which is
+> exactly the gap the provider's own schema support doesn't cover.
 
 ---
 
@@ -332,7 +431,10 @@ exactly the gap the provider's own schema support doesn't cover.
 
 ## What's next
 
-- **Settings / configurable tolerances.** A separate settings section for the user to enable disable the types of discrepencies. Settings for user to change explain models and change the various parameters for tolerences and amount discrepencies
+- **Settings / configurable tolerances.** A settings screen for enabling
+  or disabling individual discrepancy types, switching the explanation
+  model, and adjusting the tolerance and settlement-window parameters —
+  deliberately deferred so it never blocked a working end-to-end product.
 - **FX-rate table** so currency mismatches can be valued instead of just
   flagged.
 - **Fuzzy matching** (email + amount + date) for orphan payments with no
@@ -379,7 +481,8 @@ real application code existed.
 settled did I write out a full phased execution plan: the reconciliation
 engine first, proven against the real CSVs in isolation before anything
 else touched it; then schema, auth, and RLS; then ingestion; then each
-screen; then the LLM layer; then a polish pass; after everything else already worked end to end. I handed that plan
+screen; then the LLM layer; then a polish pass; and Settings deliberately
+last, after everything else already worked end to end. I handed that plan
 to Claude Code and directed the build phase by phase from there.
 
 **Implementation.** Built with Claude Code (Sonnet 5), phase by phase
@@ -387,4 +490,10 @@ against that plan, with me reviewing and redirecting along the way — not
 a single autonomous pass. Notably: extensive verification was done by
 actually driving the deployed app with a headless browser against the
 real Supabase project — not just unit tests — which is how several real
-bugs surfaced and got fixed during the build rather than after
+bugs surfaced and got fixed during the build rather than after: a
+duplicate-row discrepancy that silently disappeared after being deduped
+at ingest, a "latest batch" resolution that could pick an
+uploaded-but-never-reconciled batch and mislabel everything as "Matched,"
+and a sidebar with no responsive behavior that forced horizontal scroll
+on every mobile page. Every commit in this repo's history is a single
+reviewable unit of work; I can walk through and defend any of them.
