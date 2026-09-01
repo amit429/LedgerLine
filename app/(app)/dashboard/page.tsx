@@ -93,9 +93,9 @@ export default async function DashboardPage() {
 
       <div className="flex flex-col gap-5 p-7">
         <HeadlineTiles summary={summary} />
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-4">
           <ImpactByTypeChart summary={summary} />
-          <div className="flex-1">
+          <div className="min-w-[320px] flex-1">
             <SeverityDonut summary={summary} />
           </div>
         </div>

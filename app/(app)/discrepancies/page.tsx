@@ -215,8 +215,8 @@ export default function DiscrepanciesPage() {
       </div>
 
       <div className="flex flex-col gap-3.5 p-7">
-        <div className="flex items-center gap-2.5">
-          <div className="flex flex-1 max-w-[360px] items-center gap-2 rounded-md border border-border bg-white px-3 py-2">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex min-w-[220px] flex-1 max-w-[360px] items-center gap-2 rounded-md border border-border bg-white px-3 py-2">
             <Search size={13} className="text-muted-foreground" />
             <input
               value={q}

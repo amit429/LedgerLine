@@ -40,7 +40,8 @@ export function DiscrepancyPreviewTable({
           stake.
         </p>
       </div>
-      <table className="w-full text-[13px]">
+      <div className="overflow-x-auto">
+      <table className="w-full min-w-[800px] text-[13px]">
         <thead>
           <tr className="text-left text-[12px] text-muted-foreground">
             <th className="px-5 py-2.5 font-medium">Severity</th>
@@ -80,6 +81,7 @@ export function DiscrepancyPreviewTable({
           ))}
         </tbody>
       </table>
+      </div>
       <div className="flex items-center justify-between border-t border-border px-5 py-3.5">
         <p className="text-[12.5px] text-muted-foreground">
           Showing {rows.length} of {totalCount} discrepancies

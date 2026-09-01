@@ -20,7 +20,7 @@ function Tile({ label, value, hint, href, emphasize }: TileProps) {
   return (
     <Link
       href={href}
-      className="flex-1 rounded-lg border border-border bg-card px-5 py-4.5 transition-colors hover:border-ring"
+      className="min-w-[160px] flex-1 rounded-lg border border-border bg-card px-5 py-4.5 transition-colors hover:border-ring"
     >
       <p className="mb-2 text-[12.5px] text-muted-foreground">{label}</p>
       <p
@@ -58,7 +58,7 @@ export function HeadlineTiles({ summary }: { summary: ReconSummary }) {
   const reconciledOrderCount = summary.reconciledOrderCount ?? null;
 
   return (
-    <div className="flex gap-4">
+    <div className="flex flex-wrap gap-4">
       <Tile
         label="Orders"
         value={summary.totalOrders.toLocaleString()}

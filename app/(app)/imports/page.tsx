@@ -63,7 +63,8 @@ export default async function ImportsPage() {
 
       <div className="flex flex-col gap-4 p-7">
         <div className="rounded-lg border border-border bg-card">
-          <table className="w-full text-[13px]">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[900px] text-[13px]">
             <thead>
               <tr className="text-left text-[12px] text-muted-foreground">
                 <th className="px-5 py-2.5 font-medium">Import</th>
@@ -102,6 +103,7 @@ export default async function ImportsPage() {
               ))}
             </tbody>
           </table>
+          </div>
           {rows.length === 0 && (
             <p className="p-8 text-center text-sm text-muted-foreground">
               No imports yet.{" "}
