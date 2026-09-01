@@ -126,7 +126,7 @@ Environment variables (see `.env.example`):
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase dashboard → Project Settings → API |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Same page — safe to expose in the browser, RLS is what protects data |
-| `SUPABASE_SERVICE_ROLE_KEY` | Same page — server-only, bypasses RLS, used only by `scripts/seed-demo-user.ts` |
+| `SUPABASE_SERVICE_ROLE_KEY` (Optional) | Same page — server-only, bypasses RLS, used only by `scripts/seed-demo-user.ts`|
 | `GEMINI_API_KEY` | aistudio.google.com/apikey — used server-side only for the explanation layer |
 
 Database schema: apply everything in `supabase/migrations/` to a Supabase
