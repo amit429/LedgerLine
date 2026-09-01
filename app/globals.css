@@ -7,9 +7,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-roboto-mono);
+  --font-heading: var(--font-inter);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -46,75 +46,118 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Severity system — no equivalent slot in shadcn's default theme, so
+     these are additive tokens used directly (bg-critical, text-high, …). */
+  --color-critical: var(--severity-critical);
+  --color-high: var(--severity-high);
+  --color-medium: var(--severity-medium);
+  --color-low: var(--severity-low);
+  --color-reconciled: var(--severity-reconciled);
+  --color-tint-critical: var(--severity-tint-critical);
+  --color-tint-high: var(--severity-tint-high);
+  --color-tint-medium: var(--severity-tint-medium);
+  --color-tint-low: var(--severity-tint-low);
+  --color-tint-reconciled: var(--severity-tint-reconciled);
 }
 
+/*
+ * Design tokens ported from ledgerline-ui.html's :root block (the source
+ * mockup for every screen), not re-invented. Named variables kept close to
+ * the original for traceability: --ink/--paper/--t1-t3 became
+ * background/foreground/muted-foreground under shadcn's naming, but the
+ * hex values are unchanged.
+ */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --background: #f6f7f9; /* --paper */
+  --foreground: #0f1419; /* --t1 */
+  --card: #ffffff;
+  --card-foreground: #0f1419;
+  --popover: #ffffff;
+  --popover-foreground: #0f1419;
+  --primary: #10141c; /* --ink */
+  --primary-foreground: #ffffff;
+  --secondary: #f0f2f5; /* --subtle */
+  --secondary-foreground: #0f1419;
+  --muted: #f0f2f5;
+  --muted-foreground: #5a6472; /* --t2 */
+  --accent: #f0f2f5;
+  --accent-foreground: #0f1419;
+  --destructive: #c0362c; /* --critical */
+  --border: #e2e5ea; /* --line */
+  --input: #e2e5ea;
+  --ring: #cbd1da; /* --line-strong */
+  --chart-1: #c0362c;
+  --chart-2: #b26b12;
+  --chart-3: #3f6bb0;
+  --chart-4: #6b7480;
+  --chart-5: #1c7a5e;
+  --radius: 0.5rem; /* --r-md: 8px */
+
+  --sidebar: #10141c; /* --ink */
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #1a2130; /* --ink-raised */
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1a2130;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #2a3344; /* --ink-line */
+  --sidebar-ring: #9ba5b4;
+
+  --severity-critical: #c0362c;
+  --severity-high: #b26b12;
+  --severity-medium: #3f6bb0;
+  --severity-low: #6b7480;
+  --severity-reconciled: #1c7a5e;
+  --severity-tint-critical: #fbebe9;
+  --severity-tint-high: #fbf1e3;
+  --severity-tint-medium: #eaf0f9;
+  --severity-tint-low: #eff1f4;
+  --severity-tint-reconciled: #e7f3ee;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #10141c;
+  --foreground: #ffffff;
+  --card: #1a2130;
+  --card-foreground: #ffffff;
+  --popover: #1a2130;
+  --popover-foreground: #ffffff;
+  --primary: #ffffff;
+  --primary-foreground: #10141c;
+  --secondary: #2a3344;
+  --secondary-foreground: #ffffff;
+  --muted: #2a3344;
+  --muted-foreground: #9ba5b4;
+  --accent: #2a3344;
+  --accent-foreground: #ffffff;
+  --destructive: #c0362c;
+  --border: #2a3344;
+  --input: #2a3344;
+  --ring: #5a6472;
+  --chart-1: #c0362c;
+  --chart-2: #b26b12;
+  --chart-3: #3f6bb0;
+  --chart-4: #6b7480;
+  --chart-5: #1c7a5e;
+  --sidebar: #10141c;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #1a2130;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1a2130;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #2a3344;
+  --sidebar-ring: #9ba5b4;
+
+  --severity-critical: #e5766c;
+  --severity-high: #d6963f;
+  --severity-medium: #7fa3d9;
+  --severity-low: #9aa3ae;
+  --severity-reconciled: #4fae8c;
+  --severity-tint-critical: #3a2220;
+  --severity-tint-high: #3a2f1c;
+  --severity-tint-medium: #1e2b3d;
+  --severity-tint-low: #262b33;
+  --severity-tint-reconciled: #1c332b;
 }
 
 @layer base {
