@@ -90,6 +90,10 @@ export default function DiscrepanciesPage() {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openId, setOpenId] = useState<string | null>(null);
+  const [bulkExplainProgress, setBulkExplainProgress] = useState<{
+    done: number;
+    total: number;
+  } | null>(null);
 
   // Fetches on every filter/sort/page change. The reset-then-fetch shape
   // is React's own documented data-fetching-in-effect pattern (react.dev/
@@ -147,6 +151,20 @@ export default function DiscrepanciesPage() {
     URL.revokeObjectURL(url);
   }
 
+  async function handleBulkExplain() {
+    const ids = Array.from(selected);
+    setBulkExplainProgress({ done: 0, total: ids.length });
+    // Sequential, not parallel — this respects the per-user rate limit
+    // (lib/llm/rate-limit.ts) instead of bursting past it, and keeps
+    // progress readable as it goes.
+    for (let i = 0; i < ids.length; i++) {
+      await fetch(`/api/discrepancies/${ids[i]}/explain`, { method: "POST" }).catch(() => {});
+      setBulkExplainProgress({ done: i + 1, total: ids.length });
+    }
+    setBulkExplainProgress(null);
+    setSelected(new Set());
+  }
+
   function toggleSelect(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -185,11 +203,13 @@ export default function DiscrepanciesPage() {
             Export CSV
           </button>
           <button
-            disabled
-            title="LLM explanations arrive in a later phase"
-            className="cursor-not-allowed rounded-md bg-secondary px-3.5 py-2 text-sm font-semibold text-muted-foreground"
+            onClick={handleBulkExplain}
+            disabled={selected.size === 0 || bulkExplainProgress !== null}
+            className="rounded-md bg-primary px-3.5 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:bg-secondary disabled:text-muted-foreground"
           >
-            Explain {selected.size > 0 ? selected.size : ""} selected
+            {bulkExplainProgress
+              ? `Explaining ${bulkExplainProgress.done}/${bulkExplainProgress.total}…`
+              : `Explain ${selected.size > 0 ? selected.size : ""} selected`}
           </button>
         </div>
       </div>
