@@ -1,9 +1,17 @@
 "use client";
 
 import { CheckCircle2 } from "lucide-react";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Dropzone } from "@/components/imports/dropzone";
 import type { Finding } from "@/lib/batches/findings";
+
+const RECONCILE_STAGES = [
+  "Normalising references and parsing dates",
+  "Grouping charges and refunds by order",
+  "Applying 12 rules",
+  "Writing results",
+];
 
 const ORDERS_COLUMNS_HINT =
   "order_id · order_date · customer_email · currency · gross_amount · discount · net_amount · status";
@@ -39,6 +47,7 @@ const FINDING_DOT: Record<Finding["tone"], string> = {
 };
 
 export default function NewImportPage() {
+  const router = useRouter();
   const [step, setStep] = useState<WizardStep>("upload");
   const [ordersFile, setOrdersFile] = useState<File | null>(null);
   const [paymentsFile, setPaymentsFile] = useState<File | null>(null);
@@ -49,6 +58,37 @@ export default function NewImportPage() {
     orders: ValidationError;
     payments: ValidationError;
   } | null>(null);
+  const [isReconciling, setIsReconciling] = useState(false);
+  const [reconcileStage, setReconcileStage] = useState(0);
+  const [reconcileError, setReconcileError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isReconciling) return;
+    const interval = setInterval(() => {
+      setReconcileStage((stage) => Math.min(stage + 1, RECONCILE_STAGES.length - 1));
+    }, 350);
+    return () => clearInterval(interval);
+  }, [isReconciling]);
+
+  async function handleRunReconciliation() {
+    if (!result) return;
+    setReconcileError(null);
+    setReconcileStage(0);
+    setIsReconciling(true);
+
+    const response = await fetch(`/api/batches/${result.batchId}/reconcile`, {
+      method: "POST",
+    });
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      setReconcileError(body.error ?? "Reconciliation failed. Please try again.");
+      setIsReconciling(false);
+      return;
+    }
+
+    router.push("/dashboard");
+  }
 
   async function handleContinue() {
     if (!ordersFile || !paymentsFile) return;
@@ -152,41 +192,88 @@ export default function NewImportPage() {
           <FileCard name="payments.csv" summary={result.paymentsSummary} />
         </div>
 
-        <div className="mb-4.5 rounded-lg border border-border bg-card">
-          <div className="border-b border-border px-5 pt-4.5 pb-4">
-            <h2 className="mb-1 text-[15px] font-semibold">
-              What we found before reconciling
-            </h2>
-            <p className="text-[12.5px] text-muted-foreground">
-              These are parsing decisions, not discrepancies. Each one
-              changes what the engine sees.
-            </p>
-          </div>
-          {result.findings.map((finding) => (
-            <div
-              key={finding.title}
-              className="flex items-start gap-3 border-t border-border/60 px-5 py-3.5 first:border-t-0"
-            >
-              <span
-                className={`mt-1.5 h-1.75 w-1.75 flex-none rounded-full ${FINDING_DOT[finding.tone]}`}
-              />
-              <div className="min-w-0 flex-1">
-                <p className="mb-1 text-[13px] font-semibold">{finding.title}</p>
-                <p className="text-[12.5px] leading-[19px] text-muted-foreground">
-                  {finding.description}
-                </p>
-              </div>
-              <code className="flex-none rounded bg-secondary px-2 py-1 font-mono text-[11px] text-muted-foreground">
-                {finding.tag}
-              </code>
+        {isReconciling ? (
+          <div className="mb-4.5 rounded-lg border border-border bg-card px-5 py-5">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-[15px] font-semibold">
+                Matching {result.ordersSummary.unique} orders against{" "}
+                {result.paymentsSummary.unique} payments
+              </p>
+              <span className="font-mono text-[12.5px] text-muted-foreground">
+                {Math.round(((reconcileStage + 1) / RECONCILE_STAGES.length) * 100)}%
+              </span>
             </div>
-          ))}
-        </div>
+            <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-secondary">
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-300"
+                style={{
+                  width: `${((reconcileStage + 1) / RECONCILE_STAGES.length) * 100}%`,
+                }}
+              />
+            </div>
+            {RECONCILE_STAGES.map((stage, index) => (
+              <div key={stage} className="flex items-center gap-2.5 py-1 text-[13px]">
+                <span
+                  className={`h-2 w-2 flex-none rounded-full ${
+                    index < reconcileStage
+                      ? "bg-[var(--severity-reconciled)]"
+                      : index === reconcileStage
+                        ? "bg-primary"
+                        : "bg-ring"
+                  }`}
+                />
+                <span
+                  className={
+                    index <= reconcileStage ? "text-foreground" : "text-muted-foreground"
+                  }
+                >
+                  {stage}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mb-4.5 rounded-lg border border-border bg-card">
+            <div className="border-b border-border px-5 pt-4.5 pb-4">
+              <h2 className="mb-1 text-[15px] font-semibold">
+                What we found before reconciling
+              </h2>
+              <p className="text-[12.5px] text-muted-foreground">
+                These are parsing decisions, not discrepancies. Each one
+                changes what the engine sees.
+              </p>
+            </div>
+            {result.findings.map((finding) => (
+              <div
+                key={finding.title}
+                className="flex items-start gap-3 border-t border-border/60 px-5 py-3.5 first:border-t-0"
+              >
+                <span
+                  className={`mt-1.5 h-1.75 w-1.75 flex-none rounded-full ${FINDING_DOT[finding.tone]}`}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="mb-1 text-[13px] font-semibold">{finding.title}</p>
+                  <p className="text-[12.5px] leading-[19px] text-muted-foreground">
+                    {finding.description}
+                  </p>
+                </div>
+                <code className="flex-none rounded bg-secondary px-2 py-1 font-mono text-[11px] text-muted-foreground">
+                  {finding.tag}
+                </code>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {reconcileError && (
+          <p className="mb-3 text-sm text-destructive">{reconcileError}</p>
+        )}
 
         <div className="flex items-center justify-between">
           <button
             onClick={reset}
-            className="rounded-md border border-ring bg-white px-3.5 py-2.25 text-sm font-medium"
+            disabled={isReconciling}
+            className="rounded-md border border-ring bg-white px-3.5 py-2.25 text-sm font-medium disabled:opacity-50"
           >
             Back to files
           </button>
@@ -195,13 +282,12 @@ export default function NewImportPage() {
               Reconciliation is deterministic — the same files always give
               the same result.
             </span>
-            {/* Wired to /api/batches/[id]/reconcile in Phase 5. */}
             <button
-              disabled
-              title="Coming in the next step"
-              className="cursor-not-allowed rounded-md bg-primary px-5 py-3 text-[13.5px] font-semibold text-primary-foreground opacity-60"
+              onClick={handleRunReconciliation}
+              disabled={isReconciling}
+              className="rounded-md bg-primary px-5 py-3 text-[13.5px] font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Run reconciliation
+              {isReconciling ? "Reconciling…" : "Run reconciliation"}
             </button>
           </div>
         </div>
