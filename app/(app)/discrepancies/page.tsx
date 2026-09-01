@@ -5,7 +5,10 @@ import { useEffect, useState } from "react";
 import { DetailDrawer } from "@/components/discrepancies/detail-drawer";
 import { DiscrepancyTable } from "@/components/discrepancies/discrepancy-table";
 import { MultiSelectDropdown } from "@/components/discrepancies/multi-select-dropdown";
+import { Pagination } from "@/components/shared/pagination";
+import { TableSkeleton } from "@/components/shared/table-skeleton";
 import type { DiscrepanciesResponse, DiscrepancyRow } from "@/lib/discrepancies/types";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { RULE_DESCRIPTIONS } from "@/lib/reconciliation/rule-descriptions";
 import type { DiscrepancyType } from "@/lib/reconciliation/types";
 
@@ -34,6 +37,7 @@ function buildQuery(params: {
   q: string;
   sort: string;
   page: number;
+  pageSize: number;
   exportAll?: boolean;
 }): string {
   const search = new URLSearchParams();
@@ -45,6 +49,7 @@ function buildQuery(params: {
     search.set("export", "true");
   } else {
     search.set("page", String(params.page));
+    search.set("pageSize", String(params.pageSize));
   }
   return search.toString();
 }
@@ -83,8 +88,10 @@ export default function DiscrepanciesPage() {
   const [severity, setSeverity] = useState<string[]>([]);
   const [type, setType] = useState<string[]>([]);
   const [q, setQ] = useState("");
+  const debouncedQ = useDebouncedValue(q, 300);
   const [sort, setSort] = useState("impact_desc");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [data, setData] = useState<DiscrepanciesResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -100,12 +107,20 @@ export default function DiscrepanciesPage() {
   // learn/synchronizing-with-effects#fetching-data); the `cancelled` guard
   // prevents a stale response from a superseded request overwriting a
   // newer one.
+  // Resets the page whenever the *debounced* search settles, not on every
+  // keystroke — otherwise typing would race a page-1 fetch against the
+  // still-in-flight debounce and cause a redundant request.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPage(1);
+  }, [debouncedQ]);
+
   useEffect(() => {
     let cancelled = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoading(true);
     setError(null);
-    fetch(`/api/discrepancies?${buildQuery({ severity, type, q, sort, page })}`)
+    fetch(`/api/discrepancies?${buildQuery({ severity, type, q: debouncedQ, sort, page, pageSize })}`)
       .then((res) => {
         if (!res.ok) throw new Error("Failed to load discrepancies.");
         return res.json();
@@ -122,7 +137,7 @@ export default function DiscrepanciesPage() {
     return () => {
       cancelled = true;
     };
-  }, [severity, type, q, sort, page]);
+  }, [severity, type, debouncedQ, sort, page, pageSize]);
 
   function updateFilter<T>(setter: (value: T) => void) {
     return (value: T) => {
@@ -133,12 +148,16 @@ export default function DiscrepanciesPage() {
 
   const updateSeverity = updateFilter(setSeverity);
   const updateType = updateFilter(setType);
-  const updateQ = updateFilter(setQ);
   const updateSort = updateFilter(setSort);
+
+  function updatePageSize(size: number) {
+    setPageSize(size);
+    setPage(1);
+  }
 
   async function handleExport() {
     const res = await fetch(
-      `/api/discrepancies?${buildQuery({ severity, type, q, sort, page, exportAll: true })}`
+      `/api/discrepancies?${buildQuery({ severity, type, q: debouncedQ, sort, page, pageSize, exportAll: true })}`
     );
     const body: DiscrepanciesResponse = await res.json();
     const csv = toCsv(body.rows);
@@ -220,7 +239,7 @@ export default function DiscrepanciesPage() {
             <Search size={13} className="text-muted-foreground" />
             <input
               value={q}
-              onChange={(e) => updateQ(e.target.value)}
+              onChange={(e) => setQ(e.target.value)}
               placeholder="Search order ID or transaction ref"
               className="w-full text-[13px] outline-none"
             />
@@ -255,7 +274,8 @@ export default function DiscrepanciesPage() {
 
         <div className="rounded-lg border border-border bg-card">
           {error && <p className="p-6 text-sm text-destructive">{error}</p>}
-          {!error && data && data.rows.length === 0 && (
+          {!error && isLoading && <TableSkeleton rows={pageSize > 20 ? 12 : pageSize} cols={9} />}
+          {!error && !isLoading && data && data.rows.length === 0 && (
             <div className="flex flex-col items-center gap-2 p-12 text-center">
               <p className="text-sm font-semibold">
                 {hasFilters
@@ -281,7 +301,7 @@ export default function DiscrepanciesPage() {
               )}
             </div>
           )}
-          {!error && data && data.rows.length > 0 && (
+          {!error && !isLoading && data && data.rows.length > 0 && (
             <>
               <DiscrepancyTable
                 rows={data.rows}
@@ -290,27 +310,15 @@ export default function DiscrepanciesPage() {
                 onToggleSelectAll={toggleSelectAll}
                 onOpenRow={(row) => setOpenId(row.id)}
               />
-              <div className="flex items-center justify-between border-t border-border px-5 py-3.5">
-                <p className="text-[12.5px] text-muted-foreground">
-                  Page {data.page} of {totalPages} · {selected.size} selected
-                </p>
-                <div className="flex gap-1.5">
-                  <button
-                    disabled={page <= 1}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    className="rounded border border-border px-2.5 py-1 text-[12px] disabled:opacity-40"
-                  >
-                    Previous
-                  </button>
-                  <button
-                    disabled={page >= totalPages}
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    className="rounded border border-border px-2.5 py-1 text-[12px] disabled:opacity-40"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
+              <Pagination
+                page={data.page}
+                totalPages={totalPages}
+                total={data.total}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={updatePageSize}
+                itemLabel="discrepancies"
+              />
             </>
           )}
         </div>

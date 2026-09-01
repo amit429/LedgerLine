@@ -1,6 +1,4 @@
-function Pulse({ className }: { className: string }) {
-  return <div className={`animate-pulse rounded-md bg-secondary ${className}`} />;
-}
+import { Pulse } from "@/components/shared/table-skeleton";
 
 export default function DashboardLoading() {
   return (

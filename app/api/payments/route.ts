@@ -8,7 +8,8 @@ import {
 import type { DiscrepancyType } from "@/lib/reconciliation/types";
 import { createClient } from "@/lib/supabase/server";
 
-const PAGE_SIZE = 25;
+const DEFAULT_PAGE_SIZE = 25;
+const ALLOWED_PAGE_SIZES = new Set([10, 25, 50, 100]);
 
 export async function GET(request: Request) {
   const supabase = await createClient();
@@ -26,6 +27,10 @@ export async function GET(request: Request) {
   const type = url.searchParams.get("type");
   const status = url.searchParams.get("status");
   const page = Math.max(1, Number(url.searchParams.get("page") ?? "1") || 1);
+  const requestedPageSize = Number(url.searchParams.get("pageSize"));
+  const PAGE_SIZE = ALLOWED_PAGE_SIZES.has(requestedPageSize)
+    ? requestedPageSize
+    : DEFAULT_PAGE_SIZE;
 
   const batchId = batchIdParam ?? (await getActiveBatchId(supabase));
 

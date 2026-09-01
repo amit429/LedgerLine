@@ -3,7 +3,8 @@ import { getActiveBatchId } from "@/lib/batches/active-batch";
 import type { DiscrepancyType, Severity } from "@/lib/reconciliation/types";
 import { createClient } from "@/lib/supabase/server";
 
-const PAGE_SIZE = 20;
+const DEFAULT_PAGE_SIZE = 20;
+const ALLOWED_PAGE_SIZES = new Set([10, 20, 25, 50, 100]);
 
 export async function GET(request: Request) {
   const supabase = await createClient();
@@ -22,6 +23,10 @@ export async function GET(request: Request) {
   const q = url.searchParams.get("q")?.trim() ?? "";
   const sort = url.searchParams.get("sort") ?? "impact_desc";
   const page = Math.max(1, Number(url.searchParams.get("page") ?? "1") || 1);
+  const requestedPageSize = Number(url.searchParams.get("pageSize"));
+  const PAGE_SIZE = ALLOWED_PAGE_SIZES.has(requestedPageSize)
+    ? requestedPageSize
+    : DEFAULT_PAGE_SIZE;
   const exportAll = url.searchParams.get("export") === "true";
 
   // Resolve the run to read from: the given batch's latest run, or the

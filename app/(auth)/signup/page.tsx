@@ -9,6 +9,7 @@ const MIN_PASSWORD_LENGTH = 10;
 
 export default function SignupPage() {
   const router = useRouter();
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -20,6 +21,10 @@ export default function SignupPage() {
     event.preventDefault();
     setError(null);
 
+    if (!fullName.trim()) {
+      setError("Enter your name.");
+      return;
+    }
     if (password.length < MIN_PASSWORD_LENGTH) {
       setError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
       return;
@@ -34,6 +39,7 @@ export default function SignupPage() {
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
+      options: { data: { full_name: fullName.trim() } },
     });
 
     if (signUpError) {
@@ -75,6 +81,22 @@ export default function SignupPage() {
       <p className="mb-6 text-sm text-muted-foreground">
         Your imports and results stay private to your account.
       </p>
+
+      <div className="mb-4">
+        <label htmlFor="full-name" className="mb-1.5 block text-sm font-medium">
+          Full name
+        </label>
+        <input
+          id="full-name"
+          type="text"
+          required
+          autoComplete="name"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          placeholder="Jane Cooper"
+          className="w-full rounded-md border border-border bg-white px-3.5 py-3 text-sm placeholder:text-muted-foreground/70 focus:border-primary focus:outline-none"
+        />
+      </div>
 
       <div className="mb-4">
         <label htmlFor="email" className="mb-1.5 block text-sm font-medium">
