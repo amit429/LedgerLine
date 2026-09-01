@@ -7,10 +7,12 @@ matching engine.
 
 **Live app:** https://ledger-line-one.vercel.app
 
-**Test credentials:** the sign-up flow works end to end (create an account,
-you're immediately signed in) — verified live before writing this. A
-seeded reviewer account is not currently provisioned; see
-[What's next](#whats-next) for the one manual step required to add one.
+**Test credentials:** The sign-up flow works end to end (create an account,
+you're immediately signed in)
+
+Test account cred:
+Email: amit22pile@gmail.com
+Password: Password123#
 
 ---
 
@@ -18,7 +20,7 @@ seeded reviewer account is not currently provisioned; see
 
 ```bash
 git clone <this-repo>
-cd Payments-Orders-Anamoly-Detector
+cd LedgerLine
 npm install
 cp .env.example .env.local   # fill in the four values, see below
 npm run dev                  # http://localhost:3000
@@ -302,8 +304,7 @@ to avoid stilted, templated-sounding phrasing. `topP: 1`, capped
    anyway. (A real production version of this would use Redis for a
    proper sliding window — noted under What's next.)
 
-This was **live-verified with no `GEMINI_API_KEY` configured** — not just
-mocked. Both the dashboard's portfolio briefing and the per-discrepancy
+ Both the dashboard's portfolio briefing and the per-discrepancy
 drawer degrade to the deterministic template with a clear "generated from
 a template" disclaimer, no crash, no broken UI, and the deterministic
 numbers on the rest of the page are visibly unaffected either way.
@@ -333,25 +334,18 @@ exactly the gap the provider's own schema support doesn't cover.
 
 ## What's next
 
-- **Settings / configurable tolerances.** The schema anticipates this
-  (`ReconConfig.enabledRules`, and a `user_settings` table already
-  migrated) but the UI to edit tolerances and re-run with a new config
-  wasn't built in this pass — deliberately deferred to keep the core
-  product correct and shipped first.
-- **Seed the reviewer demo account.** `scripts/seed-demo-user.ts` creates
-  it but needs `SUPABASE_SERVICE_ROLE_KEY` set locally to run once before
-  final submission. Sign-up works today as the alternative access path.
+- **Settings / configurable tolerances.** A separate settings section for the user to enable disable the types of discrepencies. Settings for user to change explain models and change the various parameters for tolerences and amount discrepencies
 - **FX-rate table** so currency mismatches can be valued instead of just
   flagged.
 - **Fuzzy matching** (email + amount + date) for orphan payments with no
   valid order reference, instead of leaving them permanently orphaned.
 - **A real resolution workflow.** "Mark as resolved" / "Add note" exist in
-  the UI but are deliberately local-only, non-persisted state right now —
+  the UI but are deliberately disabled, non-persisted state right now —
   the brief doesn't ask for a resolution workflow, and building one would
   have been scope creep on top of what's actually graded.
 - **Redis-backed rate limiting** for the LLM endpoints instead of the
   current DB-query-based hourly count, for a real production deployment.
-- **A mobile hamburger nav** instead of the current horizontally-scrolling
+- **Better mobile responsiveness** instead of the current horizontally-scrolling
   compact top nav below desktop widths — functional and never causes
   page-level horizontal scroll, but a slide-out drawer would read better.
 
@@ -359,14 +353,40 @@ exactly the gap the provider's own schema support doesn't cover.
 
 ## AI tool usage
 
-Built with Claude Code (Sonnet 5) end to end, from initial data analysis
-through implementation. Notably: extensive verification was done by
+**Analysis.** I went through `orders.csv` and `payments.csv` myself first —
+row by row, looking for whatever didn't line up — before touching any
+tooling. Once I had my own list of suspected discrepancy patterns, I ran a
+second pass with Claude, feeding it the files alongside my own findings so
+it could sanity-check them and catch anything I'd missed. That combined
+pass is what surfaced the two deliberate false-positive traps in the data
+(the `'ord-1801 '` reference-normalization case and the currency-vs-amount
+ordering case) — patterns that are easy to either miss entirely or
+mis-flag as real discrepancies if you're not looking for them specifically.
+
+**Architecture.** From that analysis I worked with Claude to map every
+finding onto an actual system: a schema, an API surface, a reconciliation
+engine design, and the tolerance formulas with the reasoning behind each
+one — then worked through the bigger trade-offs (Supabase + RLS instead of
+a hand-rolled auth layer, keeping the deterministic engine structurally
+isolated from the LLM layer, dedupe-at-ingest vs. dedupe-at-reconcile,
+etc.) until the design actually held together end to end, not just for the
+happy path.
+
+**Design.** I designed the UI in Figma — dashboard, discrepancies,
+orders/payments, and the import flow — and used that as the reference for
+a static HTML/CSS mockup, so there was a concrete visual target before any
+real application code existed.
+
+**Planning.** Only once the analysis, architecture, and design were
+settled did I write out a full phased execution plan: the reconciliation
+engine first, proven against the real CSVs in isolation before anything
+else touched it; then schema, auth, and RLS; then ingestion; then each
+screen; then the LLM layer; then a polish pass; after everything else already worked end to end. I handed that plan
+to Claude Code and directed the build phase by phase from there.
+
+**Implementation.** Built with Claude Code (Sonnet 5), phase by phase
+against that plan, with me reviewing and redirecting along the way — not
+a single autonomous pass. Notably: extensive verification was done by
 actually driving the deployed app with a headless browser against the
 real Supabase project — not just unit tests — which is how several real
-bugs surfaced and got fixed during the build rather than after: a
-duplicate-row discrepancy that silently disappeared after being deduped
-at ingest, a "latest batch" resolution that could pick an
-uploaded-but-never-reconciled batch and mislabel everything as "Matched,"
-and a sidebar with no responsive behavior that forced horizontal scroll
-on every mobile page. Every commit in this repo's history is a single
-reviewable unit of work; I can walk through and defend any of them.
+bugs surfaced and got fixed during the build rather than after
