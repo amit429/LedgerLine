@@ -26,7 +26,7 @@ export default async function AppLayout({
     // comment. Joins import_batches for the label shown in the sidebar.
     supabase
       .from("reconciliation_runs")
-      .select("summary, import_batches(label)")
+      .select("summary, import_batches(label, created_at)")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
@@ -39,7 +39,7 @@ export default async function AppLayout({
   }
 
   let openDiscrepancyCount: number | undefined;
-  let activeImportLabel = "No import yet";
+  let activeImport: { label: string; createdAt: string } | null = null;
   if (run) {
     const summary = run.summary as ReconSummary;
     openDiscrepancyCount = MONEY_AFFECTING_TYPES.reduce(
@@ -47,11 +47,13 @@ export default async function AppLayout({
       0
     );
     const batchRelation = run.import_batches as
-      | { label: string }
-      | { label: string }[]
+      | { label: string; created_at: string }
+      | { label: string; created_at: string }[]
       | null;
     const batch = Array.isArray(batchRelation) ? batchRelation[0] : batchRelation;
-    activeImportLabel = batch?.label ?? activeImportLabel;
+    if (batch) {
+      activeImport = { label: batch.label, createdAt: batch.created_at };
+    }
   }
 
   const userName =
@@ -62,7 +64,7 @@ export default async function AppLayout({
   return (
     <div className="flex h-dvh flex-col bg-background lg:flex-row lg:overflow-hidden">
       <Sidebar
-        activeImportLabel={activeImportLabel}
+        activeImport={activeImport}
         userEmail={user.email ?? ""}
         userName={userName}
         openDiscrepancyCount={openDiscrepancyCount}

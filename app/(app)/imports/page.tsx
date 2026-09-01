@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LocalDateTime } from "@/components/shared/local-datetime";
 import { OutcomePill } from "@/components/shared/outcome-pill";
 import { computeRunHistoryRows, type RunHistoryRow } from "@/lib/batches/run-history";
 import { createClient } from "@/lib/supabase/server";
@@ -7,15 +8,22 @@ function formatCents(cents: number): string {
   return (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
 
-function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString("en-US", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+// Module-level constants, not object literals inline at the call site —
+// LocalDateTime's effect intentionally skips `options` in its dependency
+// array, which only stays harmless if the same reference is passed every
+// render rather than a fresh object each time.
+const IMPORT_DATE_OPTIONS: Intl.DateTimeFormatOptions = {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+};
+const RECONCILED_AT_OPTIONS: Intl.DateTimeFormatOptions = {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+};
 
 function formatConfig(config: RunHistoryRow["config"], engineVersion: string): string {
   const floor = (config.amountToleranceFloorCents / 100).toFixed(2);
@@ -33,7 +41,7 @@ export default async function ImportsPage() {
   const [{ data: batches }, { data: runs }] = await Promise.all([
     supabase
       .from("import_batches")
-      .select("id, label, orders_row_count, payments_row_count")
+      .select("id, label, created_at, orders_row_count, payments_row_count")
       .order("created_at", { ascending: false }),
     supabase
       .from("reconciliation_runs")
@@ -84,9 +92,12 @@ export default async function ImportsPage() {
                   id={row.runId}
                   className="border-t border-border/60 target:bg-[var(--severity-tint-reconciled)]"
                 >
-                  <td className="px-5 py-3">{row.label}</td>
+                  <td className="px-5 py-3">
+                    {row.label} ·{" "}
+                    <LocalDateTime iso={row.batchCreatedAt} options={IMPORT_DATE_OPTIONS} />
+                  </td>
                   <td className="px-3 py-3 text-muted-foreground">
-                    {formatDateTime(row.reconciledAt)}
+                    <LocalDateTime iso={row.reconciledAt} options={RECONCILED_AT_OPTIONS} />
                   </td>
                   <td className="px-3 py-3 text-right font-mono">{row.ordersCount}</td>
                   <td className="px-3 py-3 text-right font-mono">{row.paymentsCount}</td>

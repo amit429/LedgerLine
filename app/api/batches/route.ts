@@ -72,11 +72,13 @@ export async function POST(request: Request) {
     .from("import_batches")
     .insert({
       user_id: user.id,
-      label: `Import · ${new Date().toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })}`,
+      // No pre-formatted date here on purpose — this runs on Vercel's
+      // server clock (UTC), so baking a formatted date into stored data
+      // silently shows the wrong calendar day to anyone in a timezone
+      // ahead of UTC for part of every day. Every place that displays
+      // this label appends the date itself, client-side, from
+      // created_at (see components/shared/local-datetime.tsx).
+      label: "Import",
       orders_filename: ordersFile.name,
       payments_filename: paymentsFile.name,
       orders_row_count: dedupedOrders.length,
@@ -162,7 +164,7 @@ export async function GET() {
     await Promise.all([
       supabase
         .from("import_batches")
-        .select("id, label, orders_row_count, payments_row_count")
+        .select("id, label, created_at, orders_row_count, payments_row_count")
         .order("created_at", { ascending: false }),
       supabase
         .from("reconciliation_runs")

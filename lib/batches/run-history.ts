@@ -5,6 +5,9 @@ export interface RunHistoryRow {
   runId: string;
   batchId: string;
   label: string;
+  /** When the import itself was uploaded — distinct from reconciledAt,
+   * which is when this particular run executed. */
+  batchCreatedAt: string;
   reconciledAt: string;
   ordersCount: number;
   paymentsCount: number;
@@ -18,6 +21,7 @@ export interface RunHistoryRow {
 interface BatchRow {
   id: string;
   label: string;
+  created_at: string;
   orders_row_count: number;
   payments_row_count: number;
 }
@@ -68,6 +72,7 @@ export function computeRunHistoryRows(
         runId: run.id,
         batchId: run.batch_id,
         label: batch.label,
+        batchCreatedAt: batch.created_at,
         reconciledAt: run.created_at,
         ordersCount: batch.orders_row_count,
         paymentsCount: batch.payments_row_count,

@@ -11,6 +11,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+import { LocalDateTime } from "@/components/shared/local-datetime";
 import { createClient } from "@/lib/supabase/client";
 
 interface NavItem {
@@ -27,15 +28,40 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Imports", href: "/imports", icon: UploadCloud },
 ];
 
+// Module-level, not an inline object literal — see LocalDateTime's own
+// comment on why `options` needs a stable reference across renders.
+const ACTIVE_IMPORT_DATE_OPTIONS: Intl.DateTimeFormatOptions = {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+};
+
 interface SidebarProps {
-  activeImportLabel: string;
+  /** null when the user has no import yet. The date is rendered
+   * separately from the label (see ActiveImport below) because it must
+   * be formatted in the *viewer's* timezone, client-side — the label
+   * itself deliberately carries no pre-baked date (see
+   * app/api/batches/route.ts) since that was computed on Vercel's UTC
+   * server clock and would silently show the wrong calendar day to
+   * anyone in a timezone ahead of UTC for part of every day. */
+  activeImport: { label: string; createdAt: string } | null;
   userEmail: string;
   userName: string | null;
   openDiscrepancyCount?: number;
 }
 
+function ActiveImport({ activeImport }: { activeImport: SidebarProps["activeImport"] }) {
+  if (!activeImport) return <>No import yet</>;
+  return (
+    <>
+      {activeImport.label} ·{" "}
+      <LocalDateTime iso={activeImport.createdAt} options={ACTIVE_IMPORT_DATE_OPTIONS} />
+    </>
+  );
+}
+
 export function Sidebar({
-  activeImportLabel,
+  activeImport,
   userEmail,
   userName,
   openDiscrepancyCount,
@@ -72,7 +98,7 @@ export function Sidebar({
         <div className="mb-4.5 rounded-md border border-sidebar-border bg-sidebar-accent px-3 py-2.5">
           <p className="mb-0.5 text-[10.5px] text-white/60">Active import</p>
           <p className="text-[12.5px] font-medium text-white">
-            {activeImportLabel}
+            <ActiveImport activeImport={activeImport} />
           </p>
         </div>
 
@@ -133,7 +159,9 @@ export function Sidebar({
             <span className="text-[14px] font-semibold tracking-tight">Ledgerline</span>
           </div>
           <div className="flex items-center gap-2.5">
-            <span className="text-[11px] text-white/60">{activeImportLabel}</span>
+            <span className="text-[11px] text-white/60">
+              <ActiveImport activeImport={activeImport} />
+            </span>
             <button
               onClick={handleSignOut}
               disabled={isSigningOut}

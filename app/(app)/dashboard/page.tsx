@@ -46,7 +46,7 @@ export default async function DashboardPage() {
   // that was actually reconciled, so this can't just be the latest batch)
   // and the source for the trend chart below — one query instead of two.
   const [{ data: batches }, { data: allRuns }] = await Promise.all([
-    supabase.from("import_batches").select("id, label, orders_row_count, payments_row_count"),
+    supabase.from("import_batches").select("id, label, created_at, orders_row_count, payments_row_count"),
     supabase
       .from("reconciliation_runs")
       .select("id, batch_id, summary, engine_version, config, created_at")
