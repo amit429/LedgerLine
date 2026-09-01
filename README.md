@@ -7,12 +7,8 @@ matching engine.
 
 **Live app:** https://ledger-line-one.vercel.app
 
-**Test credentials:** The sign-up flow works end to end (create an account,
+**Account creation:** The sign-up flow works end to end (create an account,
 you're immediately signed in)
-
-Test account cred:
-Email: amit22pile@gmail.com
-Password: Password123#
 
 ---
 
