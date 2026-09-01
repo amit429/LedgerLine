@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__supabase__list_projects",
+      "mcp__supabase__get_project",
+      "mcp__supabase__create_project",
+      "mcp__supabase__list_organizations",
+      "mcp__supabase__get_organization",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__list_extensions",
+      "mcp__supabase__list_migrations",
+      "mcp__supabase__apply_migration",
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__get_logs",
+      "mcp__supabase__get_advisors",
+      "mcp__supabase__get_project_url",
+      "mcp__supabase__get_anon_key",
+      "mcp__supabase__generate_typescript_types",
+      "Bash(npx supabase *)",
+      "Bash(npx vercel *)",
+      "Bash(supabase *)",
+      "Bash(vercel *)",
+      "Bash(npx next build*)",
+      "Bash(npx next dev*)",
+      "Bash(npx tsc *)",
+      "Bash(npx eslint *)",
+      "Bash(npx vitest *)",
+      "Bash(npm run *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": ["supabase", "vercel"]
+}
