@@ -112,6 +112,10 @@ export interface ReconSummary {
   valueReconciledCents: number;
   valueInDisputeCents: number;
   moneyAtRiskCents: number;
+  /** Orders with zero discrepancies of any kind — the $ counterpart is valueReconciledCents. */
+  reconciledOrderCount: number;
+  /** Unique orders carrying >=1 money-affecting discrepancy — counterpart to valueInDisputeCents. */
+  disputedOrderCount: number;
   bySeverity: Record<Severity, { count: number; impactCents: number }>;
   byType: Record<DiscrepancyType, { count: number; impactCents: number }>;
 }

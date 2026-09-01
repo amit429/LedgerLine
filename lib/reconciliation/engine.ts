@@ -151,6 +151,8 @@ export function computeSummary(
 
   let valueReconciledCents = 0;
   let valueInDisputeCents = 0;
+  let reconciledOrderCount = 0;
+  let disputedOrderCount = 0;
 
   for (const order of orders) {
     const orderDiscrepancies = discrepanciesByOrderKey.get(order.orderKey) ?? [];
@@ -159,6 +161,7 @@ export function computeSummary(
     );
     if (hasMoneyAffecting) {
       valueInDisputeCents += order.netCents;
+      disputedOrderCount += 1;
       continue;
     }
 
@@ -167,6 +170,7 @@ export function computeSummary(
       order.status === "completed"
     ) {
       valueReconciledCents += order.netCents;
+      reconciledOrderCount += 1;
     }
   }
 
@@ -199,6 +203,8 @@ export function computeSummary(
     valueReconciledCents,
     valueInDisputeCents,
     moneyAtRiskCents,
+    reconciledOrderCount,
+    disputedOrderCount,
     bySeverity,
     byType,
   };

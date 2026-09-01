@@ -40,6 +40,15 @@ describe("reconcile() against the real dataset", () => {
     expect(result.summary.totalOrderValueCents).toBe(4_209_465);
   });
 
+  it("counts 16 disputed orders and 164 cleanly reconciled orders", () => {
+    const result = loadResult();
+    // 184 total - 16 disputed (money-affecting) - 4 informational-only
+    // (ORD-1004 dup, ORD-2101 late settlement, ORD-2201/2202 data quality)
+    // = 164 clean.
+    expect(result.summary.disputedOrderCount).toBe(16);
+    expect(result.summary.reconciledOrderCount).toBe(164);
+  });
+
   it("finds exactly the 19 seeded money-affecting discrepancies", () => {
     const result = loadResult();
     const moneyAffecting = result.discrepancies.filter((d) =>
