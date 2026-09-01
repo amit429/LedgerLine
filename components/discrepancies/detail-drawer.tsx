@@ -349,8 +349,8 @@ export function DetailDrawer({
                     <p className="text-[11px] text-muted-foreground">
                       Generated from the stored discrepancy record. The
                       model never sees the raw files and never decides
-                      whether two records match. gpt-4o-mini · temperature
-                      0.2
+                      whether two records match. gemini-2.5-flash ·
+                      temperature 0.2
                     </p>
                   )}
                 </div>

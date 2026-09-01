@@ -57,8 +57,8 @@ export async function POST(
       .eq("id", id);
     return NextResponse.json({ explanation, cached: false, fallback: false });
   } catch {
-    // Timeout, malformed/refused response after retry, or 429/5xx from
-    // OpenAI all land here. The deterministic template keeps the UI
+    // Timeout, malformed/refused response after retry, or an error from
+    // Gemini all land here. The deterministic template keeps the UI
     // functional and is deliberately not cached — it's cheap to regenerate
     // and a later attempt might succeed with the real model instead.
     const explanation = fallbackExplanation(discrepancy);

@@ -100,7 +100,7 @@ export function LlmBriefingCard({ runId }: { runId: string }) {
           {!isFallback && (
             <p className="border-t border-border pt-3 text-[11px] text-muted-foreground">
               Written from the deterministic results — never from the raw
-              files. gpt-4o-mini · temperature 0.2
+              files. gemini-2.5-flash · temperature 0.2
             </p>
           )}
         </div>

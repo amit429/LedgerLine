@@ -32,7 +32,7 @@ export default async function AppLayout({
       .maybeSingle(),
   ]);
 
-  // Middleware already redirects unauthenticated requests away from this
+  // proxy.ts already redirects unauthenticated requests away from this
   // route group — this is the second, independent check at the page layer.
   if (!user) {
     redirect("/login");

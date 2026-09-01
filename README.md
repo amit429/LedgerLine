@@ -31,7 +31,7 @@ Environment variables (see `.env.example`):
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase dashboard → Project Settings → API |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Same page — safe to expose in the browser, RLS is what protects data |
 | `SUPABASE_SERVICE_ROLE_KEY` | Same page — server-only, bypasses RLS, used only by `scripts/seed-demo-user.ts` |
-| `OPENAI_API_KEY` | platform.openai.com — used server-side only for the explanation layer |
+| `GEMINI_API_KEY` | aistudio.google.com/apikey — used server-side only for the explanation layer |
 
 Database schema: apply everything in `supabase/migrations/` to a Supabase
 project (`supabase db push`, or run each file's SQL in the dashboard's SQL
@@ -63,7 +63,7 @@ npm test
 │                                /api/runs/:id/explain-summary│
 │                                                              │
 │  lib/reconciliation/  ← pure engine, zero I/O, zero LLM     │
-│  lib/llm/              ← OpenAI client, isolated from above │
+│  lib/llm/              ← Gemini client, isolated from above │
 └───────────────────────────┬──────────────────────────────┘
                              │ session-scoped (RLS-enforced)
                      ┌───────▼────────┐
@@ -74,7 +74,7 @@ npm test
 ```
 
 One Next.js app, not a separate frontend/backend repo: Route Handlers *are*
-the backend, which is what keeps the OpenAI key server-side without a
+the backend, which is what keeps the Gemini key server-side without a
 second deploy target, a second set of CORS rules, or a cookie-domain
 problem. The security boundary that matters is server vs. client, not
 repo vs. repo.
@@ -255,23 +255,39 @@ run. Both are sent only the structured fields — never the raw files, and
 never `customer_email`, the one PII field in this dataset, which isn't
 needed to explain a rule-based mismatch.
 
-**Structured output:** `zodResponseFormat` (OpenAI's official Zod helper)
-generates a strict JSON Schema from the same Zod schema used to validate
-the response, so the model literally cannot return a shape the code
-doesn't already know how to parse.
+**Model: `gemini-2.5-flash`** (Google), chosen for the same reason
+`gpt-4o-mini` would be: this is a restatement task, not one that needs a
+flagship model's reasoning — fast, cheap, and more than capable of turning
+a structured record into a few sentences. Thinking is explicitly disabled
+(`thinkingConfig: { thinkingBudget: 0 }`) since deliberation isn't useful
+here and would only spend the output-token budget on reasoning instead of
+the actual answer.
+
+**Structured output:** the request sends `responseJsonSchema`, generated
+from the *same* Zod schema used to validate the response
+(`z.toJSONSchema()` in `lib/llm/schema.ts` — one definition, not two kept
+in sync by hand). Gemini's schema support is a subset of JSON Schema and
+doesn't cover everything Zod does (e.g. a string's max length), so unlike
+OpenAI's strict mode this is a strong hint to the model rather than a hard
+guarantee. The real enforcement is what already existed regardless of
+provider: every response is parsed and Zod-validated in
+`lib/llm/client.ts` before it's accepted, so a response that's
+syntactically valid JSON but violates the contract (wrong enum value,
+missing field, headline too long) is still caught and still triggers the
+same retry-then-fallback path below.
 
 **Temperature: 0.2**, deliberately near-zero but not exactly zero. This is
 a deterministic classification being restated in plain English, not a
 creative task — near-zero keeps the same discrepancy producing
 essentially the same explanation across reloads, which matters because
 it sits directly next to a number someone will act on. Not exactly 0,
-to avoid stilted, templated-sounding phrasing. `top_p: 1`, capped
-`max_tokens`, 10-second timeout.
+to avoid stilted, templated-sounding phrasing. `topP: 1`, capped
+`maxOutputTokens`, 10-second timeout.
 
 **Failure handling, all four layers the brief asks for:**
-1. The response is Zod-validated; an invalid or refused response is
-   retried once (`lib/llm/client.ts`).
-2. If it's still invalid, times out, or OpenAI returns 429/5xx, a
+1. The response is Zod-validated; an invalid, malformed, or refused
+   response is retried once (`lib/llm/client.ts`).
+2. If it's still invalid, times out, or Gemini returns an error, a
    deterministic template built purely from the discrepancy's own fields
    takes over (`lib/llm/fallback.ts`) — no network call, the UI never
    breaks. Fallback results are deliberately **not** cached, so the next
@@ -286,14 +302,16 @@ to avoid stilted, templated-sounding phrasing. `top_p: 1`, capped
    anyway. (A real production version of this would use Redis for a
    proper sliding window — noted under What's next.)
 
-This was **live-verified with no OpenAI key configured** — not just
+This was **live-verified with no `GEMINI_API_KEY` configured** — not just
 mocked. Both the dashboard's portfolio briefing and the per-discrepancy
 drawer degrade to the deterministic template with a clear "generated from
 a template" disclaimer, no crash, no broken UI, and the deterministic
 numbers on the rest of the page are visibly unaffected either way.
 `lib/llm/__tests__/client.test.ts` covers the same retry-then-fallback
 contract without needing network access, asserting exactly one retry
-(not an unbounded loop) before it throws.
+(not an unbounded loop) before it throws — including the Gemini-specific
+case of a response that's valid JSON but fails Zod validation, which is
+exactly the gap the provider's own schema support doesn't cover.
 
 ---
 

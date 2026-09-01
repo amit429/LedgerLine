@@ -1,7 +1,9 @@
-import OpenAI from "openai";
-import { zodResponseFormat } from "openai/helpers/zod";
+import { GoogleGenAI } from "@google/genai";
+import type { ZodType } from "zod";
 import {
+  EXPLANATION_JSON_SCHEMA,
   ExplanationSchema,
+  PORTFOLIO_SUMMARY_JSON_SCHEMA,
   PortfolioSummarySchema,
   type Explanation,
   type PortfolioSummary,
@@ -15,9 +17,9 @@ import {
  * little variance avoids stilted, templated-sounding phrasing.
  */
 const TEMPERATURE = 0.2;
-const MODEL = "gpt-4o-mini";
+const MODEL = "gemini-2.5-flash";
 const TIMEOUT_MS = 10_000;
-const MAX_TOKENS = 500;
+const MAX_OUTPUT_TOKENS = 500;
 
 /**
  * This module has zero import of anything under lib/reconciliation/* beyond
@@ -25,12 +27,12 @@ const MAX_TOKENS = 500;
  * rows, and cannot influence matching. It only turns an already-persisted
  * discrepancy record into prose.
  */
-function getClient(): OpenAI {
-  const apiKey = process.env.OPENAI_API_KEY;
+function getClient(): GoogleGenAI {
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is not configured");
+    throw new Error("GEMINI_API_KEY is not configured");
   }
-  return new OpenAI({ apiKey });
+  return new GoogleGenAI({ apiKey });
 }
 
 async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
@@ -46,32 +48,47 @@ async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
+/**
+ * Gemini's `responseJsonSchema` (see schema.ts) only nudges the model —
+ * it's not a hard guarantee the way OpenAI's strict structured-output mode
+ * is. Parsing and Zod-validating here is what actually enforces the
+ * contract: a response with a missing field, a bad enum value, or a
+ * too-long headline throws here, which withRetry treats the same as any
+ * other failure (retry once, then let the caller fall back to the
+ * deterministic template).
+ */
+function parseStructuredResponse<T>(schema: ZodType<T>, text: string | undefined): T {
+  if (!text) {
+    throw new Error("Gemini response did not include any text content");
+  }
+  return schema.parse(JSON.parse(text));
+}
+
 export async function requestExplanation(
   system: string,
   user: string
 ): Promise<Explanation> {
   const client = getClient();
   return withRetry(async () => {
-    const completion = await client.chat.completions.parse(
-      {
-        model: MODEL,
+    const response = await client.models.generateContent({
+      model: MODEL,
+      contents: user,
+      config: {
+        systemInstruction: system,
         temperature: TEMPERATURE,
-        top_p: 1,
-        max_tokens: MAX_TOKENS,
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: user },
-        ],
-        response_format: zodResponseFormat(ExplanationSchema, "explanation"),
+        topP: 1,
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
+        responseMimeType: "application/json",
+        responseJsonSchema: EXPLANATION_JSON_SCHEMA,
+        // This is a restatement task, not one that benefits from
+        // deliberation — disabling thinking keeps latency low and avoids
+        // the model spending its (small) output-token budget on reasoning
+        // it doesn't need instead of the actual JSON.
+        thinkingConfig: { thinkingBudget: 0 },
+        httpOptions: { timeout: TIMEOUT_MS },
       },
-      { timeout: TIMEOUT_MS }
-    );
-
-    const parsed = completion.choices[0]?.message?.parsed;
-    if (!parsed) {
-      throw new Error("LLM response did not include a parsed explanation");
-    }
-    return parsed;
+    });
+    return parseStructuredResponse(ExplanationSchema, response.text);
   });
 }
 
@@ -81,25 +98,20 @@ export async function requestPortfolioSummary(
 ): Promise<PortfolioSummary> {
   const client = getClient();
   return withRetry(async () => {
-    const completion = await client.chat.completions.parse(
-      {
-        model: MODEL,
+    const response = await client.models.generateContent({
+      model: MODEL,
+      contents: user,
+      config: {
+        systemInstruction: system,
         temperature: TEMPERATURE,
-        top_p: 1,
-        max_tokens: MAX_TOKENS,
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: user },
-        ],
-        response_format: zodResponseFormat(PortfolioSummarySchema, "portfolio_summary"),
+        topP: 1,
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
+        responseMimeType: "application/json",
+        responseJsonSchema: PORTFOLIO_SUMMARY_JSON_SCHEMA,
+        thinkingConfig: { thinkingBudget: 0 },
+        httpOptions: { timeout: TIMEOUT_MS },
       },
-      { timeout: TIMEOUT_MS }
-    );
-
-    const parsed = completion.choices[0]?.message?.parsed;
-    if (!parsed) {
-      throw new Error("LLM response did not include a parsed portfolio summary");
-    }
-    return parsed;
+    });
+    return parseStructuredResponse(PortfolioSummarySchema, response.text);
   });
 }

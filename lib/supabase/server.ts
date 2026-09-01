@@ -21,7 +21,7 @@ export async function createClient() {
             );
           } catch {
             // Called from a Server Component render, which can't set
-            // cookies. Session refresh happens in middleware instead, so
+            // cookies. Session refresh happens in proxy.ts instead, so
             // this is safe to ignore here.
           }
         },
