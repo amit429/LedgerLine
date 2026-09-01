@@ -19,36 +19,35 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  const { data: batch } = await supabase
-    .from("import_batches")
-    .select("id, label")
+  // The latest *run*, not the latest batch — see getActiveBatchId's doc
+  // comment. Joins import_batches for the label shown in the sidebar.
+  const { data: run } = await supabase
+    .from("reconciliation_runs")
+    .select("summary, import_batches(label)")
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   let openDiscrepancyCount: number | undefined;
-  if (batch) {
-    const { data: run } = await supabase
-      .from("reconciliation_runs")
-      .select("summary")
-      .eq("batch_id", batch.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (run) {
-      const summary = run.summary as ReconSummary;
-      openDiscrepancyCount = MONEY_AFFECTING_TYPES.reduce(
-        (sum, type) => sum + (summary.byType[type]?.count ?? 0),
-        0
-      );
-    }
+  let activeImportLabel = "No import yet";
+  if (run) {
+    const summary = run.summary as ReconSummary;
+    openDiscrepancyCount = MONEY_AFFECTING_TYPES.reduce(
+      (sum, type) => sum + (summary.byType[type]?.count ?? 0),
+      0
+    );
+    const batchRelation = run.import_batches as
+      | { label: string }
+      | { label: string }[]
+      | null;
+    const batch = Array.isArray(batchRelation) ? batchRelation[0] : batchRelation;
+    activeImportLabel = batch?.label ?? activeImportLabel;
   }
 
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar
-        activeImportLabel={batch?.label ?? "No import yet"}
+        activeImportLabel={activeImportLabel}
         userEmail={user.email ?? ""}
         openDiscrepancyCount={openDiscrepancyCount}
       />

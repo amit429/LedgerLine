@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getActiveBatchId } from "@/lib/batches/active-batch";
 import type { DiscrepancyType, Severity } from "@/lib/reconciliation/types";
 import { createClient } from "@/lib/supabase/server";
 
@@ -24,18 +25,10 @@ export async function GET(request: Request) {
   const exportAll = url.searchParams.get("export") === "true";
 
   // Resolve the run to read from: the given batch's latest run, or the
-  // user's most recent batch's latest run if no batchId was given. RLS
+  // batch behind the user's most recent run if no batchId was given (not
+  // just their most recently uploaded batch — see getActiveBatchId). RLS
   // scopes every query below to the caller's own rows.
-  let batchId = batchIdParam;
-  if (!batchId) {
-    const { data: latestBatch } = await supabase
-      .from("import_batches")
-      .select("id")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    batchId = latestBatch?.id ?? null;
-  }
+  const batchId = batchIdParam ?? (await getActiveBatchId(supabase));
 
   if (!batchId) {
     return NextResponse.json({ rows: [], total: 0, page: 1, pageSize: PAGE_SIZE, runId: null });

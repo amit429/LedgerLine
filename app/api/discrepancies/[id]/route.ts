@@ -25,7 +25,14 @@ export async function GET(
     return NextResponse.json({ error: "Discrepancy not found" }, { status: 404 });
   }
 
-  const batchId = (discrepancy.reconciliation_runs as { batch_id: string } | null)?.batch_id;
+  // supabase-js's embed inference isn't reliable without generated
+  // Database types — handle both the single-object and array shape.
+  const runRelation = discrepancy.reconciliation_runs as
+    | { batch_id: string }
+    | { batch_id: string }[]
+    | null;
+  const runEmbed = Array.isArray(runRelation) ? runRelation[0] : runRelation;
+  const batchId = runEmbed?.batch_id;
 
   const [{ data: order }, { data: payments }] = await Promise.all([
     batchId

@@ -38,21 +38,12 @@ function formatRelativeTime(iso: string): string {
 export default async function DashboardPage() {
   const supabase = await createClient();
 
-  const { data: batch } = await supabase
-    .from("import_batches")
-    .select("id")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!batch) {
-    return <EmptyState />;
-  }
-
+  // The latest *run*, not the latest batch — an uploaded-but-never-
+  // reconciled batch (abandoned mid-wizard, or just not run yet) must not
+  // shadow an older batch that was actually reconciled.
   const { data: run } = await supabase
     .from("reconciliation_runs")
-    .select("id, summary, created_at")
-    .eq("batch_id", batch.id)
+    .select("id, batch_id, summary, created_at")
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
