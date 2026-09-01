@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { Explanation } from "@/lib/llm/schema";
 import { RULE_DESCRIPTIONS } from "@/lib/reconciliation/rule-descriptions";
 import type {
   DiscrepancyType,
@@ -8,6 +9,12 @@ import type {
   RawPaymentRow,
   Severity,
 } from "@/lib/reconciliation/types";
+
+const CONFIDENCE_PILL: Record<Explanation["confidence"], string> = {
+  high: "bg-[var(--severity-tint-reconciled)] text-[var(--severity-reconciled)]",
+  medium: "bg-[var(--severity-tint-high)] text-[var(--severity-high)]",
+  low: "bg-[var(--severity-tint-low)] text-[var(--severity-low)]",
+};
 
 interface DrawerData {
   discrepancy: {
@@ -19,6 +26,8 @@ interface DrawerData {
     expected_cents: number | null;
     actual_cents: number | null;
     impact_cents: number;
+    llm_explanation: Explanation | null;
+    llm_generated_at: string | null;
   };
   order: RawOrderRow | null;
   payments: RawPaymentRow[];
@@ -63,6 +72,9 @@ export function DetailDrawer({
 }) {
   const [data, setData] = useState<DrawerData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [explanation, setExplanation] = useState<Explanation | null>(null);
+  const [isFallback, setIsFallback] = useState(false);
+  const [explainState, setExplainState] = useState<"idle" | "loading" | "error">("idle");
 
   // Reset-then-fetch on discrepancyId change — React's documented
   // data-fetching-in-effect pattern; `cancelled` guards against a stale
@@ -72,13 +84,20 @@ export function DetailDrawer({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setData(null);
     setError(null);
+    setExplanation(null);
+    setIsFallback(false);
+    setExplainState("idle");
     fetch(`/api/discrepancies/${discrepancyId}`)
       .then((res) => {
         if (!res.ok) throw new Error("Failed to load this discrepancy.");
         return res.json();
       })
-      .then((body) => {
-        if (!cancelled) setData(body);
+      .then((body: DrawerData) => {
+        if (cancelled) return;
+        setData(body);
+        if (body.discrepancy.llm_explanation) {
+          setExplanation(body.discrepancy.llm_explanation);
+        }
       })
       .catch((err) => {
         if (!cancelled) setError(err.message);
@@ -87,6 +106,23 @@ export function DetailDrawer({
       cancelled = true;
     };
   }, [discrepancyId]);
+
+  async function handleExplain(regenerate = false) {
+    setExplainState("loading");
+    try {
+      const res = await fetch(
+        `/api/discrepancies/${discrepancyId}/explain${regenerate ? "?regenerate=true" : ""}`,
+        { method: "POST" }
+      );
+      if (!res.ok) throw new Error("Failed to generate an explanation.");
+      const body = await res.json();
+      setExplanation(body.explanation);
+      setIsFallback(body.fallback);
+      setExplainState("idle");
+    } catch {
+      setExplainState("error");
+    }
+  }
 
   const rule = data ? RULE_DESCRIPTIONS[data.discrepancy.type] : null;
   // A field on the payment card is highlighted when the corresponding
@@ -224,12 +260,110 @@ export function DetailDrawer({
             </div>
 
             <div className="flex-1 border-b border-border px-6 py-5">
-              <h3 className="mb-2 text-[13px] font-semibold">Explanation</h3>
-              <p className="text-[12.5px] leading-[19px] text-muted-foreground">
-                Plain-language explanations arrive in a later phase — this
-                deterministic record is already final and won&apos;t change
-                once that&apos;s wired up.
-              </p>
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-[13px] font-semibold">Explanation</h3>
+                  {explanation && (
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${CONFIDENCE_PILL[explanation.confidence]}`}
+                    >
+                      {explanation.confidence[0].toUpperCase() + explanation.confidence.slice(1)}{" "}
+                      confidence
+                    </span>
+                  )}
+                </div>
+                {explanation && (
+                  <button
+                    onClick={() => handleExplain(true)}
+                    disabled={explainState === "loading"}
+                    className="text-[12px] text-muted-foreground disabled:opacity-50"
+                  >
+                    Regenerate
+                  </button>
+                )}
+              </div>
+
+              {explainState === "loading" && (
+                <div className="flex flex-col gap-2">
+                  <div className="h-4 w-full animate-pulse rounded bg-secondary" />
+                  <div className="h-4 w-4/5 animate-pulse rounded bg-secondary" />
+                  <div className="h-4 w-3/5 animate-pulse rounded bg-secondary" />
+                  <p className="mt-1 text-[12px] text-muted-foreground">
+                    Writing the summary. The deterministic result above is
+                    already final — this only adds a plain-language read.
+                  </p>
+                </div>
+              )}
+
+              {explainState === "error" && (
+                <div className="rounded-md bg-[var(--severity-tint-critical)] p-3">
+                  <p className="mb-1 text-[12.5px] font-semibold text-[var(--severity-critical)]">
+                    The explanation service didn&apos;t respond
+                  </p>
+                  <p className="mb-2.5 text-[12px] text-[var(--severity-critical)]">
+                    Your reconciliation results are unaffected.
+                  </p>
+                  <button
+                    onClick={() => handleExplain(true)}
+                    className="rounded-md border border-[var(--severity-critical)] px-2.5 py-1 text-[12px] font-medium text-[var(--severity-critical)]"
+                  >
+                    Try again
+                  </button>
+                </div>
+              )}
+
+              {explainState === "idle" && explanation && (
+                <div className="flex flex-col gap-3">
+                  {isFallback && (
+                    <p className="text-[11.5px] text-muted-foreground">
+                      Generated from a template — the explanation service
+                      didn&apos;t return a usable response.
+                    </p>
+                  )}
+                  <p className="text-[13px] font-medium">{explanation.headline}</p>
+                  <div>
+                    <p className="mb-1 text-[11px] font-semibold text-muted-foreground">
+                      Likely cause
+                    </p>
+                    <p className="text-[12.5px] leading-[19px] text-muted-foreground">
+                      {explanation.likely_cause}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-[11px] font-semibold text-muted-foreground">
+                      Business impact
+                    </p>
+                    <p className="text-[12.5px] leading-[19px] text-muted-foreground">
+                      {explanation.business_impact}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-[11px] font-semibold text-muted-foreground">
+                      Recommended action
+                    </p>
+                    <p className="text-[12.5px] leading-[19px] text-muted-foreground">
+                      {explanation.recommended_action}
+                    </p>
+                  </div>
+                  {!isFallback && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Generated from the stored discrepancy record. The
+                      model never sees the raw files and never decides
+                      whether two records match. gpt-4o-mini · temperature
+                      0.2
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {explainState === "idle" && !explanation && (
+                <button
+                  onClick={() => handleExplain(false)}
+                  className="rounded-md border border-ring bg-white px-3 py-1.5 text-[12.5px] font-medium"
+                >
+                  Explain this discrepancy
+                </button>
+              )}
             </div>
 
             <div className="sticky bottom-0 flex items-center gap-2.5 border-t border-border bg-white px-6 py-4">
