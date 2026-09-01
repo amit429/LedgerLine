@@ -94,16 +94,6 @@ export default function LoginPage() {
           Create one
         </Link>
       </p>
-
-      <div className="mt-5 rounded-md bg-secondary px-4 py-3.5">
-        <p className="text-sm font-semibold">Reviewer login</p>
-        <p className="font-mono text-xs text-muted-foreground">
-          reviewer@ledgerline.app
-        </p>
-        <p className="font-mono text-xs text-muted-foreground">
-          sample-run-2025
-        </p>
-      </div>
     </form>
   );
 }
