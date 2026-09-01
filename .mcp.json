@@ -1,11 +1,8 @@
 {
   "mcpServers": {
     "supabase": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@supabase/mcp-server-supabase@latest"
-      ]
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp?read_only=false"
     },
     "vercel": {
       "type": "http",
